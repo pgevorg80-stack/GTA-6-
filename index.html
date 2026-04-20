@@ -512,6 +512,97 @@
             player.add(playerMesh);
         }
 
+        // --- AUDIO SYSTEM ---
+        let audioCtx;
+        let engineOsc;
+        let engineFilter;
+        let windGain;
+
+        function initAudio() {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            
+            // Engine Synth
+            engineOsc = audioCtx.createOscillator();
+            engineOsc.type = 'sawtooth';
+            
+            engineFilter = audioCtx.createBiquadFilter();
+            engineFilter.type = 'lowpass';
+            engineFilter.frequency.value = 100;
+            
+            const engineGain = audioCtx.createGain();
+            engineGain.gain.value = 0.15;
+            
+            engineOsc.connect(engineFilter);
+            engineFilter.connect(engineGain);
+            engineGain.connect(audioCtx.destination);
+            engineOsc.start();
+
+            // Wind Synth
+            const bufferSize = audioCtx.sampleRate * 2;
+            const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+            const output = noiseBuffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) {
+                output[i] = Math.random() * 2 - 1;
+            }
+            const windSource = audioCtx.createBufferSource();
+            windSource.buffer = noiseBuffer;
+            windSource.loop = true;
+            
+            const windFilter = audioCtx.createBiquadFilter();
+            windFilter.type = 'lowpass';
+            windFilter.frequency.value = 600;
+            
+            windGain = audioCtx.createGain();
+            windGain.gain.value = 0.0;
+            
+            windSource.connect(windFilter);
+            windFilter.connect(windGain);
+            windGain.connect(audioCtx.destination);
+            windSource.start();
+        }
+
+        function playCrashSound() {
+            if (!audioCtx) return;
+            // Explosion Sweep
+            const osc = audioCtx.createOscillator();
+            osc.type = 'square';
+            const gain = audioCtx.createGain();
+            
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            
+            osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(10, audioCtx.currentTime + 0.5);
+            
+            gain.gain.setValueAtTime(1, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 1.5);
+            
+            osc.start();
+            osc.stop(audioCtx.currentTime + 1.5);
+
+            // Explosion Noise
+            const bufferSize = audioCtx.sampleRate * 1;
+            const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+            const output = noiseBuffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) output[i] = Math.random() * 2 - 1;
+            
+            const noiseSource = audioCtx.createBufferSource();
+            noiseSource.buffer = noiseBuffer;
+            const noiseFilter = audioCtx.createBiquadFilter();
+            noiseFilter.type = 'lowpass';
+            noiseFilter.frequency.setValueAtTime(1000, audioCtx.currentTime);
+            noiseFilter.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 1);
+            
+            const noiseGain = audioCtx.createGain();
+            noiseGain.gain.setValueAtTime(1.5, audioCtx.currentTime);
+            noiseGain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 1);
+            
+            noiseSource.connect(noiseFilter);
+            noiseFilter.connect(noiseGain);
+            noiseGain.connect(audioCtx.destination);
+            noiseSource.start();
+        }
+
         // --- UI LOGIC ---
         const mainMenu = document.getElementById('main-menu');
         const startBtn = document.getElementById('start-btn');
@@ -543,6 +634,7 @@
             mainMenu.style.display = 'none';
             uiDiv.style.display = 'block';
             velocity = 0.1;
+            initAudio();
         });
 
         // --- TRAFFIC SYSTEM ---
@@ -656,6 +748,14 @@
                     velocity *= 0.96; // Slow down gradually
                     player.translateZ(velocity * 0.2); // Move in slow motion
                     player.rotation.y += angle * 0.1; // Slowly drift
+                }
+
+                // Update Audio
+                if (audioCtx && engineOsc) {
+                    const speedRatio = Math.max(0, velocity / 2.5);
+                    engineOsc.frequency.value = 40 + (speedRatio * 120); // Pitch
+                    engineFilter.frequency.value = 100 + (speedRatio * 600); // Filter
+                    windGain.gain.value = speedRatio * 0.8;
                 }
 
                 // --- TRAFFIC PHYSICS & PACING AI ---
@@ -780,6 +880,7 @@
             gameState = 'DYING';
             crashPos.copy(player.position);
             wastedDiv.style.display = 'flex';
+            playCrashSound();
             // slight delay to ensure display flex applies before opacity
             setTimeout(() => {
                 wastedDiv.classList.add('visible');
