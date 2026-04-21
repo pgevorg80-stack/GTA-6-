@@ -273,6 +273,55 @@
         #btn-left  { bottom: 40px; left: 30px; }
         #btn-right { bottom: 40px; left: 120px; }
 
+        /* --- FULLSCREEN BUTTON --- */
+        #fullscreen-btn {
+            position: fixed;
+            top: 15px;
+            right: 15px;
+            z-index: 50;
+            width: 45px;
+            height: 45px;
+            border-radius: 10px;
+            background: rgba(0, 0, 0, 0.5);
+            border: 2px solid rgba(255, 255, 255, 0.4);
+            color: #fff;
+            font-size: 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+        #fullscreen-btn:hover {
+            background: rgba(0, 255, 255, 0.3);
+            border-color: #0ff;
+        }
+
+        /* --- ROTATE DEVICE OVERLAY --- */
+        #rotate-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: #000;
+            z-index: 9999;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: #fff;
+            font-size: 1.5rem;
+            text-align: center;
+            gap: 20px;
+        }
+        #rotate-overlay .rotate-icon {
+            font-size: 60px;
+            animation: rotateAnim 2s ease-in-out infinite;
+        }
+        @keyframes rotateAnim {
+            0%, 100% { transform: rotate(0deg); }
+            50% { transform: rotate(90deg); }
+        }
+
         @media (max-width: 768px) {
             #main-menu h1 { font-size: 2.5rem; }
             #main-menu h2 { font-size: 1rem; margin-top: 15px; margin-bottom: 8px; }
@@ -286,10 +335,24 @@
             #ui { font-size: 14px; }
             #wasted h1 { font-size: 4rem !important; }
         }
+
+        /* Show rotate overlay on portrait mobile */
+        @media (max-width: 900px) and (orientation: portrait) {
+            #rotate-overlay { display: flex !important; }
+        }
     </style>
 </head>
 
 <body>
+    <!-- Rotate Device Overlay -->
+    <div id="rotate-overlay">
+        <div class="rotate-icon">📱</div>
+        <div>Please rotate your device<br>to <b>landscape</b> mode</div>
+    </div>
+
+    <!-- Fullscreen Button -->
+    <button id="fullscreen-btn" title="Toggle Fullscreen">⛶</button>
+
     <div id="stats-banner">
         HIGH SCORE: <span id="menu-highscore">0</span> | COINS: <span id="menu-coins">0</span>
     </div>
@@ -355,6 +418,15 @@
         // --- MOBILE DETECTION ---
         const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || ('ontouchstart' in window && window.innerWidth < 1024);
 
+        // --- FULLSCREEN TOGGLE ---
+        document.getElementById('fullscreen-btn').addEventListener('click', () => {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(() => {});
+            } else {
+                document.exitFullscreen().catch(() => {});
+            }
+        });
+
         // --- GAME STATE ---
         let gameState = 'MENU'; // MENU, PLAYING, DYING, DEAD
         let playerColor = 0x00ffff;
@@ -406,21 +478,21 @@
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1500);
         const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: "high-performance" });
         renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.setPixelRatio(isMobile ? 1 : Math.min(window.devicePixelRatio, 2));
-        renderer.shadowMap.enabled = !isMobile;
-        if (!isMobile) renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.setPixelRatio(isMobile ? Math.min(window.devicePixelRatio, 1.5) : Math.min(window.devicePixelRatio, 2));
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = isMobile ? THREE.BasicShadowMap : THREE.PCFSoftShadowMap;
         renderer.toneMapping = THREE.ReinhardToneMapping;
         document.body.appendChild(renderer.domElement);
 
-        // --- POST-PROCESSING (BLOOM) - disabled on mobile ---
+        // --- POST-PROCESSING (BLOOM) - lighter on mobile ---
         let composer;
-        const useBloom = !isMobile;
+        const useBloom = true;
         if (useBloom) {
             const renderScene = new RenderPass(scene, camera);
             const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
-            bloomPass.threshold = 0.5;
-            bloomPass.strength = 1.2;
-            bloomPass.radius = 0.3;
+            bloomPass.threshold = isMobile ? 0.6 : 0.5;
+            bloomPass.strength = isMobile ? 0.8 : 1.2;
+            bloomPass.radius = isMobile ? 0.2 : 0.3;
             composer = new EffectComposer(renderer);
             composer.addPass(renderScene);
             composer.addPass(bloomPass);
@@ -486,7 +558,7 @@
             buildings.push(group);
         }
 
-        const buildingCount = isMobile ? 30 : 80;
+        const buildingCount = isMobile ? 50 : 80;
         for (let i = 0; i < buildingCount; i++) {
             createBuilding(100 + i * 30);
         }
@@ -917,7 +989,7 @@
             trafficBoxes.push(new THREE.Box3());
         }
 
-        const trafficCount = isMobile ? 12 : 25;
+        const trafficCount = isMobile ? 18 : 25;
         for (let i = 0; i < trafficCount; i++) {
             createTrafficCar(Math.random() > 0.4, 150 + (i * 40));
         }
@@ -944,7 +1016,7 @@
             coinBoxes.push(new THREE.Box3());
         }
 
-        const coinCount = isMobile ? 20 : 40;
+        const coinCount = isMobile ? 30 : 40;
         for (let i = 0; i < coinCount; i++) {
             createCoin(200 + (i * 40));
         }
