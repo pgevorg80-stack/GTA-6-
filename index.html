@@ -62,15 +62,43 @@
 
         #stats-banner {
             position: absolute;
-            top: 20px;
-            width: 100%;
-            text-align: center;
-            font-size: 24px;
-            color: #ff0;
-            text-shadow: 0 0 10px #ff0, 0 0 20px #ff0;
-            font-weight: bold;
+            top: 25px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 15px;
             z-index: 40;
-            letter-spacing: 2px;
+            pointer-events: none;
+        }
+
+        .stat-badge {
+            background: rgba(0, 0, 0, 0.6);
+            border: 2px solid rgba(0, 255, 255, 0.3);
+            padding: 8px 20px;
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5), 0 0 15px rgba(0, 255, 255, 0.1);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-width: 100px;
+            transition: all 0.3s;
+        }
+
+        .stat-badge .label {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: #0ff;
+            margin-bottom: 2px;
+            font-weight: bold;
+        }
+
+        .stat-badge .value {
+            font-size: 22px;
+            color: #fff;
+            text-shadow: 0 0 8px rgba(255, 255, 255, 0.4);
+            font-weight: 900;
         }
 
         /* Main Menu Styling */
@@ -241,6 +269,41 @@
             background: linear-gradient(45deg, #0ff, #f0f);
         }
 
+        /* New Menu Views */
+        .menu-view {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+        }
+        
+        .garage-btn, .back-btn {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            border: 2px solid #f0f;
+            padding: 12px 30px;
+            font-size: 1.2rem;
+            border-radius: 30px;
+            cursor: pointer;
+            margin-top: 15px;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            font-weight: bold;
+        }
+        
+        .garage-btn:hover, .back-btn:hover {
+            background: rgba(255, 0, 255, 0.2);
+            box-shadow: 0 0 15px #f0f;
+        }
+
+        .main-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            align-items: center;
+            margin-top: 20px;
+        }
+
         /* --- MOBILE TOUCH CONTROLS --- */
         #mobile-controls {
             display: none;
@@ -334,15 +397,11 @@
         }
 
         @media (max-width: 768px) {
-            #main-menu h1 { font-size: 2.5rem; margin-top: 10px; margin-bottom: 0; }
-            #main-menu h2 { font-size: 1rem; margin-top: 10px; margin-bottom: 5px; }
-            .options-container { padding: 12px; margin-bottom: 15px; }
-            .model-picker { max-width: 85vw; gap: 10px; }
-            .model-btn { min-width: 90px; font-size: 0.85rem; padding: 6px 8px; }
-            .color-btn { width: 32px; height: 32px; }
-            .color-picker { gap: 8px; }
             .start-btn { padding: 12px 35px; font-size: 1.2rem; }
-            #stats-banner { font-size: 14px; top: 5px; }
+            #stats-banner { top: 15px; gap: 10px; }
+            .stat-badge { padding: 5px 12px; min-width: 80px; }
+            .stat-badge .value { font-size: 16px; }
+            .stat-badge .label { font-size: 8px; letter-spacing: 1px; }
             #ui { font-size: 13px; }
             #wasted h1 { font-size: 4rem !important; }
         }
@@ -359,7 +418,7 @@
             .color-btn { width: 25px; height: 25px; border-width: 2px; }
             .color-picker { gap: 6px; }
             .start-btn { padding: 8px 25px; font-size: 1rem; }
-            #stats-banner { font-size: 12px; top: 2px; }
+            #stats-banner { top: 8px; transform: translateX(-50%) scale(0.85); }
         }
 
         /* Show rotate overlay on portrait mobile */
@@ -380,42 +439,57 @@
     <button id="fullscreen-btn" title="Toggle Fullscreen">⛶</button>
 
     <div id="stats-banner">
-        HIGH SCORE: <span id="menu-highscore">0</span> | COINS: <span id="menu-coins">0</span>
+        <div class="stat-badge">
+            <span class="label">High Score</span>
+            <span class="value" id="menu-highscore">0</span>
+        </div>
+        <div class="stat-badge" style="border-color: rgba(255, 255, 0, 0.3); box-shadow: 0 4px 15px rgba(0,0,0,0.5), 0 0 15px rgba(255, 255, 0, 0.1);">
+            <span class="label" style="color: #ff0;">Coins</span>
+            <span class="value" id="menu-coins">0</span>
+        </div>
     </div>
     <div id="main-menu">
-        <h1>NEON RACER</h1>
-
-        <div class="options-container">
-            <h2>Vehicle Type</h2>
-            <div class="model-picker" id="model-picker">
-                <!-- Populated by JS -->
-            </div>
-
-            <h2>Paint Job</h2>
-            <div class="color-picker" id="color-picker">
-                <div class="color-btn selected" style="background-color: #00ffff; box-shadow: 0 0 20px #00ffff;"
-                    data-color="0x00ffff"></div>
-                <div class="color-btn" style="background-color: #ff0055; box-shadow: 0 0 20px #ff0055;"
-                    data-color="0xff0055"></div>
-                <div class="color-btn" style="background-color: #ffff00; box-shadow: 0 0 20px #ffff00;"
-                    data-color="0xffff00"></div>
-                <div class="color-btn" style="background-color: #00ff00; box-shadow: 0 0 20px #00ff00;"
-                    data-color="0x00ff00"></div>
-                <div class="color-btn" style="background-color: #ffffff; box-shadow: 0 0 20px #ffffff;"
-                    data-color="0xffffff"></div>
-                <div class="color-btn" style="background-color: #000000; box-shadow: 0 0 20px #555; border-color: #555;"
-                    data-color="0x111111"></div>
+        <div id="menu-view-main" class="menu-view">
+            <h1>NEON RACER</h1>
+            <div class="main-actions">
+                <button class="start-btn" id="start-btn">Start Engine</button>
+                <button class="garage-btn" id="open-garage-btn">Garage & Shop</button>
             </div>
         </div>
 
-        <button class="start-btn" id="start-btn">Start Engine</button>
+        <div id="menu-view-garage" class="menu-view" style="display: none;">
+            <h2 style="margin-top: 10px;">GARAGE & SHOP</h2>
+            <div class="options-container">
+                <h3>Vehicle Type</h3>
+                <div class="model-picker" id="model-picker">
+                    <!-- Populated by JS -->
+                </div>
+
+                <h3>Paint Job</h3>
+                <div class="color-picker" id="color-picker">
+                    <div class="color-btn selected" style="background-color: #00ffff; box-shadow: 0 0 20px #00ffff;"
+                        data-color="0x00ffff"></div>
+                    <div class="color-btn" style="background-color: #ff0055; box-shadow: 0 0 20px #ff0055;"
+                        data-color="0xff0055"></div>
+                    <div class="color-btn" style="background-color: #ffff00; box-shadow: 0 0 20px #ffff00;"
+                        data-color="0xffff00"></div>
+                    <div class="color-btn" style="background-color: #00ff00; box-shadow: 0 0 20px #00ff00;"
+                        data-color="0x00ff00"></div>
+                    <div class="color-btn" style="background-color: #ffffff; box-shadow: 0 0 20px #ffffff;"
+                        data-color="0xffffff"></div>
+                    <div class="color-btn" style="background-color: #000000; box-shadow: 0 0 20px #555; border-color: #555;"
+                        data-color="0x111111"></div>
+                </div>
+            </div>
+            <button class="back-btn" id="back-to-main-btn">Back</button>
+        </div>
     </div>
 
     <div id="ui">SCORE: <span id="score">0</span> | COINS: <span id="in-game-coins">0</span> | SPEED: <span id="speed">0</span> MPH</div>
     <div class="vignette"></div>
     <div id="wasted">
         <h1 style="font-size: 7rem; font-style: italic; text-shadow: 0 0 30px #f00;">WASTED</h1>
-        <button onclick="location.reload()"
+        <button onclick="restartGame()"
             style="background: linear-gradient(45deg, #f0f, #f00); color:white; border:none; padding:15px 50px; cursor:pointer; font-weight:bold; font-size: 1.5rem; border-radius: 30px; box-shadow: 0 0 20px #f00; margin-top: 20px;">RETRY</button>
     </div>
 
@@ -1329,6 +1403,78 @@
             setTimeout(() => {
                 wastedDiv.classList.add('visible');
             }, 50);
+        }
+
+        function restartGame() {
+            wastedDiv.classList.remove('visible');
+            setTimeout(() => {
+                wastedDiv.style.display = 'none';
+                mainMenu.style.display = 'flex';
+                document.getElementById('menu-view-main').style.display = 'flex';
+                document.getElementById('menu-view-garage').style.display = 'none';
+                document.getElementById('stats-banner').style.display = 'flex';
+                document.getElementById('mobile-controls').style.display = 'none';
+                uiDiv.style.display = 'none';
+                
+                gameState = 'MENU';
+
+                // Reset player
+                player.position.set(0, 0, 0);
+                player.rotation.set(0, 0, 0);
+                velocity = 0;
+                angle = 0;
+                deathTimer = 0;
+                
+                // Reset traffic
+                traffic.forEach((car, i) => {
+                    const isOncoming = car.userData.isOncoming;
+                    const laneList = isOncoming ? lanesLeft : lanesRight;
+                    const targetLaneX = laneList[Math.floor(Math.random() * laneList.length)];
+                    car.position.set(targetLaneX, 0, 150 + (i * 40));
+                    car.userData.velocity = isOncoming ? -0.3 - Math.random() * 0.3 : 0.15 + Math.random() * 0.2;
+                    car.userData.angle = 0;
+                });
+                
+                // Reset coins
+                coins.forEach((coin, i) => {
+                    const lanes = [-11, -4, 4, 11];
+                    coin.position.set(lanes[Math.floor(Math.random() * lanes.length)], 0.8, 200 + (i * 40));
+                });
+                
+                // Reset buildings
+                buildings.forEach((b, i) => {
+                    const isLeft = Math.random() > 0.5;
+                    const height = 50 + Math.random() * 150;
+                    b.position.y = height / 2;
+                    b.position.x = isLeft ? -28 - Math.random() * 20 : 28 + Math.random() * 20;
+                    b.position.z = 100 + i * 30;
+                });
+                
+                // Reset UI
+                document.getElementById('score').innerText = '0';
+                document.getElementById('speed').innerText = '0';
+                document.getElementById('menu-highscore').innerText = highScore;
+                document.getElementById('menu-coins').innerText = coinsCount;
+            }, 500);
+        }
+        window.restartGame = restartGame;
+
+        // View Switching Logic
+        const openGarageBtn = document.getElementById('open-garage-btn');
+        const backToMainBtn = document.getElementById('back-to-main-btn');
+
+        if (openGarageBtn) {
+            openGarageBtn.addEventListener('click', () => {
+                document.getElementById('menu-view-main').style.display = 'none';
+                document.getElementById('menu-view-garage').style.display = 'flex';
+            });
+        }
+
+        if (backToMainBtn) {
+            backToMainBtn.addEventListener('click', () => {
+                document.getElementById('menu-view-garage').style.display = 'none';
+                document.getElementById('menu-view-main').style.display = 'flex';
+            });
         }
 
         animate();
