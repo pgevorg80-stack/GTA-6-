@@ -127,10 +127,13 @@
 
         .model-picker {
             display: flex;
-            gap: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 12px;
             margin-bottom: 20px;
             max-width: 800px;
-            overflow-x: auto;
+            overflow-y: auto;
+            max-height: 300px;
             padding: 15px 5px;
             /* Scrollbar for shop */
             scrollbar-width: thin;
@@ -138,7 +141,7 @@
         }
 
         .model-picker::-webkit-scrollbar {
-            height: 8px;
+            width: 6px;
         }
         .model-picker::-webkit-scrollbar-thumb {
             background: #0ff;
@@ -347,13 +350,16 @@
         /* Landscape mobile: compact layout */
         @media (max-height: 500px) {
             #main-menu { justify-content: flex-start; padding-top: 10px; }
-            #main-menu h1 { font-size: 2rem; margin: 5px 0; }
-            #main-menu h2 { font-size: 0.85rem; margin: 5px 0; }
-            .options-container { padding: 10px; margin-bottom: 10px; }
-            .model-btn { min-width: 80px; font-size: 0.8rem; padding: 5px 6px; }
-            .color-btn { width: 28px; height: 28px; }
-            .start-btn { padding: 10px 30px; font-size: 1.1rem; }
-            #stats-banner { font-size: 13px; top: 3px; }
+            #main-menu h1 { font-size: 1.8rem; margin: 3px 0; }
+            #main-menu h2 { font-size: 0.8rem; margin: 3px 0; }
+            .options-container { padding: 8px; margin-bottom: 8px; }
+            .model-picker { max-height: 120px; gap: 8px; padding: 5px; }
+            .model-btn { min-width: 75px; font-size: 0.7rem; padding: 4px 5px; gap: 3px; }
+            .model-btn .price { font-size: 0.65rem; }
+            .color-btn { width: 25px; height: 25px; border-width: 2px; }
+            .color-picker { gap: 6px; }
+            .start-btn { padding: 8px 25px; font-size: 1rem; }
+            #stats-banner { font-size: 12px; top: 2px; }
         }
 
         /* Show rotate overlay on portrait mobile */
@@ -1061,7 +1067,7 @@
 
         // --- MOBILE TOUCH CONTROLS ---
         if (isMobile) {
-            document.getElementById('mobile-controls').style.display = 'block';
+            // Don't show controls until game starts - they are shown in startBtn click handler
 
             const touchMap = {
                 'btn-gas': 'KeyW',
@@ -1089,12 +1095,20 @@
             });
         }
 
-        window.addEventListener('resize', () => {
+        function handleResize() {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
             if (composer) composer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        window.addEventListener('resize', handleResize);
+        window.addEventListener('orientationchange', () => {
+            setTimeout(handleResize, 200);
         });
+
+        // Fix initial sizing on mobile
+        setTimeout(handleResize, 100);
 
         // Curve target generation
         let targetCurve = 0;
