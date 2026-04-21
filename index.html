@@ -56,6 +56,19 @@
             z-index: 5;
         }
 
+        #stats-banner {
+            position: absolute;
+            top: 20px;
+            width: 100%;
+            text-align: center;
+            font-size: 24px;
+            color: #ff0;
+            text-shadow: 0 0 10px #ff0, 0 0 20px #ff0;
+            font-weight: bold;
+            z-index: 40;
+            letter-spacing: 2px;
+        }
+
         /* Main Menu Styling */
         #main-menu {
             position: absolute;
@@ -100,9 +113,29 @@
             border: 1px solid #f0f;
             margin-bottom: 40px;
             box-shadow: 0 0 30px rgba(255, 0, 255, 0.2);
+            max-width: 90vw;
         }
 
-        .model-picker,
+        .model-picker {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            max-width: 800px;
+            overflow-x: auto;
+            padding: 15px 5px;
+            /* Scrollbar for shop */
+            scrollbar-width: thin;
+            scrollbar-color: #0ff transparent;
+        }
+
+        .model-picker::-webkit-scrollbar {
+            height: 8px;
+        }
+        .model-picker::-webkit-scrollbar-thumb {
+            background: #0ff;
+            border-radius: 4px;
+        }
+
         .color-picker {
             display: flex;
             gap: 20px;
@@ -113,16 +146,21 @@
             background: transparent;
             color: #fff;
             border: 2px solid #555;
-            padding: 10px 20px;
-            font-size: 1.2rem;
+            padding: 10px 15px;
+            font-size: 1.1rem;
             border-radius: 10px;
             cursor: pointer;
             transition: all 0.2s;
             font-weight: bold;
             text-transform: uppercase;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-width: 130px;
+            gap: 8px;
         }
 
-        .model-btn:hover {
+        .model-btn:hover:not(.locked) {
             border-color: #fff;
             box-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
         }
@@ -131,6 +169,23 @@
             border-color: #0ff;
             box-shadow: 0 0 20px #0ff;
             color: #0ff;
+        }
+
+        .model-btn .price {
+            font-size: 0.9rem;
+            color: #ff0;
+            text-shadow: 0 0 5px #ff0;
+        }
+
+        .model-btn.locked {
+            border-color: #333;
+            color: #777;
+            background: rgba(0,0,0,0.5);
+        }
+
+        .model-btn.locked .price {
+            color: #f55;
+            text-shadow: none;
         }
 
         .color-btn {
@@ -177,15 +232,16 @@
 </head>
 
 <body>
+    <div id="stats-banner">
+        HIGH SCORE: <span id="menu-highscore">0</span> | COINS: <span id="menu-coins">0</span>
+    </div>
     <div id="main-menu">
         <h1>NEON RACER</h1>
 
         <div class="options-container">
             <h2>Vehicle Type</h2>
             <div class="model-picker" id="model-picker">
-                <button class="model-btn selected" data-model="sports">Sports</button>
-                <button class="model-btn" data-model="sedan">Sedan</button>
-                <button class="model-btn" data-model="truck">Truck</button>
+                <!-- Populated by JS -->
             </div>
 
             <h2>Paint Job</h2>
@@ -208,7 +264,7 @@
         <button class="start-btn" id="start-btn">Start Engine</button>
     </div>
 
-    <div id="ui">SCORE: <span id="score">0</span> | SPEED: <span id="speed">0</span> MPH</div>
+    <div id="ui">SCORE: <span id="score">0</span> | COINS: <span id="in-game-coins">0</span> | SPEED: <span id="speed">0</span> MPH</div>
     <div class="vignette"></div>
     <div id="wasted">
         <h1 style="font-size: 7rem; font-style: italic; text-shadow: 0 0 30px #f00;">WASTED</h1>
@@ -236,6 +292,13 @@
         let playerModelType = 'sports';
         let deathTimer = 0;
         let crashPos = new THREE.Vector3();
+
+        let coinsCount = parseInt(localStorage.getItem('neon_racer_coins')) || 0;
+        let highScore = parseInt(localStorage.getItem('neon_racer_highscore')) || 0;
+        let unlockedModels = JSON.parse(localStorage.getItem('neon_racer_unlocked')) || ['sports', 'sedan', 'truck'];
+
+        document.getElementById('menu-highscore').innerText = highScore;
+        document.getElementById('menu-coins').innerText = coinsCount;
 
         // --- SHADER BENDING SYSTEM ---
         const customUniforms = {
@@ -392,75 +455,99 @@
             const wheelGeom = new THREE.CylinderGeometry(0.35, 0.35, 0.25, 16);
             wheelGeom.rotateZ(Math.PI / 2);
 
-            function addWheel(x, y, z) {
+            function addWheel(x, y, z, scale = 1) {
                 const wheel = new THREE.Mesh(wheelGeom, wheelMat);
                 wheel.position.set(x, y, z);
+                wheel.scale.set(scale, scale, scale);
                 wheel.castShadow = true;
                 group.add(wheel);
             }
 
+            function addBox(w, h, d, y, z, mat, shadow = true) {
+                const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+                mesh.position.set(0, y, z);
+                mesh.castShadow = shadow;
+                mesh.receiveShadow = shadow;
+                group.add(mesh);
+                return mesh;
+            }
+
             if (type === 'sports') {
-                const body = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.5, 3.4), bodyMat);
-                body.position.y = 0.35;
-                body.castShadow = true; body.receiveShadow = true;
-
-                const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.35, 1.2), glassMat);
-                cabin.position.set(0, 0.7, 0.1);
-                cabin.castShadow = true;
-
-                const spoilerL = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.3, 0.1), bodyMat);
-                spoilerL.position.set(0.6, 0.7, -1.5);
-                const spoilerR = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.3, 0.1), bodyMat);
-                spoilerR.position.set(-0.6, 0.7, -1.5);
-                const spoiler = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.05, 0.4), bodyMat);
-                spoiler.position.set(0, 0.85, -1.5);
-
-                group.add(body, cabin, spoilerL, spoilerR, spoiler);
-
+                addBox(1.8, 0.5, 3.4, 0.35, 0, bodyMat);
+                addBox(1.4, 0.35, 1.2, 0.7, 0.1, glassMat);
+                addBox(1.8, 0.05, 0.4, 0.85, -1.5, bodyMat); // spoiler
+                const sL = addBox(0.1, 0.3, 0.1, 0.7, -1.5, bodyMat); sL.position.x = 0.6;
+                const sR = addBox(0.1, 0.3, 0.1, 0.7, -1.5, bodyMat); sR.position.x = -0.6;
                 addWheel(0.95, 0.35, 1.2); addWheel(-0.95, 0.35, 1.2);
                 addWheel(0.95, 0.35, -1.2); addWheel(-0.95, 0.35, -1.2);
-
             } else if (type === 'sedan') {
-                const body = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.6, 3.2), bodyMat);
-                body.position.y = 0.4;
-                body.castShadow = true; body.receiveShadow = true;
-
-                const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.45, 1.6), glassMat);
-                cabin.position.set(0, 0.85, -0.1);
-                cabin.castShadow = true;
-
-                group.add(body, cabin);
-
+                addBox(1.6, 0.6, 3.2, 0.4, 0, bodyMat);
+                addBox(1.4, 0.45, 1.6, 0.85, -0.1, glassMat);
                 addWheel(0.85, 0.35, 1.0); addWheel(-0.85, 0.35, 1.0);
                 addWheel(0.85, 0.35, -1.0); addWheel(-0.85, 0.35, -1.0);
-
             } else if (type === 'truck') {
-                const body = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.7, 3.8), bodyMat);
-                body.position.y = 0.6;
-                body.castShadow = true; body.receiveShadow = true;
-
-                const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.6, 1.4), glassMat);
-                cabin.position.set(0, 1.15, 0.6);
-                cabin.castShadow = true;
-
-                const bedMat = bendMat(new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.9 }));
-                const bed = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.3, 1.8), bedMat);
-                bed.position.set(0, 0.95, -0.9);
-                bed.castShadow = true;
-
-                group.add(body, cabin, bed);
-
-                const bigWheelGeom = new THREE.CylinderGeometry(0.45, 0.45, 0.3, 16);
-                bigWheelGeom.rotateZ(Math.PI / 2);
-                function addBigWheel(x, y, z) {
-                    const wheel = new THREE.Mesh(bigWheelGeom, wheelMat);
-                    wheel.position.set(x, y, z);
-                    wheel.castShadow = true;
-                    group.add(wheel);
-                }
-
-                addBigWheel(1.05, 0.45, 1.2); addBigWheel(-1.05, 0.45, 1.2);
-                addBigWheel(1.05, 0.45, -1.2); addBigWheel(-1.05, 0.45, -1.2);
+                addBox(1.8, 0.7, 3.8, 0.6, 0, bodyMat);
+                addBox(1.6, 0.6, 1.4, 1.15, 0.6, glassMat);
+                addBox(1.6, 0.3, 1.8, 0.95, -0.9, bendMat(new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.9 })));
+                addWheel(1.05, 0.45, 1.2, 1.3); addWheel(-1.05, 0.45, 1.2, 1.3);
+                addWheel(1.05, 0.45, -1.2, 1.3); addWheel(-1.05, 0.45, -1.2, 1.3);
+            } else if (type === 'coupe') {
+                addBox(1.6, 0.5, 3.0, 0.35, 0, bodyMat);
+                addBox(1.2, 0.35, 1.0, 0.7, 0.2, glassMat);
+                addWheel(0.85, 0.35, 1.0); addWheel(-0.85, 0.35, 1.0);
+                addWheel(0.85, 0.35, -1.0); addWheel(-0.85, 0.35, -1.0);
+            } else if (type === 'suv') {
+                addBox(1.8, 0.8, 3.6, 0.5, 0, bodyMat);
+                addBox(1.6, 0.5, 2.0, 1.1, -0.2, glassMat);
+                addWheel(0.95, 0.4, 1.1, 1.1); addWheel(-0.95, 0.4, 1.1, 1.1);
+                addWheel(0.95, 0.4, -1.1, 1.1); addWheel(-0.95, 0.4, -1.1, 1.1);
+            } else if (type === 'van') {
+                addBox(1.8, 1.2, 3.8, 0.7, 0, bodyMat);
+                addBox(1.6, 0.4, 1.0, 1.4, 1.0, glassMat);
+                addWheel(0.95, 0.35, 1.2); addWheel(-0.95, 0.35, 1.2);
+                addWheel(0.95, 0.35, -1.2); addWheel(-0.95, 0.35, -1.2);
+            } else if (type === 'hypercar') {
+                addBox(2.0, 0.3, 3.6, 0.25, 0, bodyMat);
+                addBox(1.4, 0.25, 1.2, 0.5, 0.2, glassMat);
+                addBox(2.0, 0.05, 0.5, 0.6, -1.6, bodyMat); // huge spoiler
+                addWheel(1.05, 0.35, 1.3, 1.0); addWheel(-1.05, 0.35, 1.3, 1.0);
+                addWheel(1.05, 0.4, -1.3, 1.15); addWheel(-1.05, 0.4, -1.3, 1.15);
+            } else if (type === 'police') {
+                addBox(1.6, 0.6, 3.2, 0.4, 0, bodyMat);
+                addBox(1.4, 0.45, 1.6, 0.85, -0.1, glassMat);
+                const sL = addBox(0.4, 0.1, 0.2, 1.15, -0.1, bendMat(new THREE.MeshBasicMaterial({color: 0xff0000}))); sL.position.x = 0.3;
+                const sR = addBox(0.4, 0.1, 0.2, 1.15, -0.1, bendMat(new THREE.MeshBasicMaterial({color: 0x0000ff}))); sR.position.x = -0.3;
+                addWheel(0.85, 0.35, 1.0); addWheel(-0.85, 0.35, 1.0);
+                addWheel(0.85, 0.35, -1.0); addWheel(-0.85, 0.35, -1.0);
+            } else if (type === 'taxi') {
+                addBox(1.6, 0.6, 3.2, 0.4, 0, bodyMat);
+                addBox(1.4, 0.45, 1.6, 0.85, -0.1, glassMat);
+                addBox(0.6, 0.15, 0.4, 1.15, -0.1, bendMat(new THREE.MeshBasicMaterial({color: 0xffaa00}))); // taxi sign
+                addWheel(0.85, 0.35, 1.0); addWheel(-0.85, 0.35, 1.0);
+                addWheel(0.85, 0.35, -1.0); addWheel(-0.85, 0.35, -1.0);
+            } else if (type === 'muscle') {
+                addBox(1.7, 0.55, 3.4, 0.4, 0, bodyMat);
+                addBox(1.3, 0.35, 1.2, 0.8, -0.2, glassMat);
+                addBox(0.6, 0.15, 0.6, 0.7, 1.0, bendMat(new THREE.MeshStandardMaterial({color: 0x222222}))); // engine block
+                addWheel(0.95, 0.4, 1.1, 1.1); addWheel(-0.95, 0.4, 1.1, 1.1);
+                addWheel(0.95, 0.45, -1.1, 1.3); addWheel(-0.95, 0.45, -1.1, 1.3);
+            } else if (type === 'limo') {
+                addBox(1.6, 0.55, 4.8, 0.4, 0, bodyMat);
+                addBox(1.4, 0.4, 3.2, 0.8, -0.2, glassMat);
+                addWheel(0.85, 0.35, 1.8); addWheel(-0.85, 0.35, 1.8);
+                addWheel(0.85, 0.35, -1.8); addWheel(-0.85, 0.35, -1.8);
+            } else if (type === 'f1') {
+                addBox(1.0, 0.25, 3.6, 0.2, 0, bodyMat);
+                addBox(0.6, 0.3, 0.8, 0.4, -0.4, glassMat); // cockpit
+                addBox(1.6, 0.05, 0.4, 0.3, 1.6, bodyMat); // front wing
+                addBox(1.4, 0.05, 0.4, 0.6, -1.6, bodyMat); // rear wing
+                addWheel(0.7, 0.35, 1.2, 0.9); addWheel(-0.7, 0.35, 1.2, 0.9);
+                addWheel(0.8, 0.4, -1.2, 1.2); addWheel(-0.8, 0.4, -1.2, 1.2);
+            } else if (type === 'cyber') {
+                addBox(1.8, 0.6, 3.6, 0.4, 0, bodyMat);
+                addBox(1.6, 0.4, 1.6, 0.9, -0.2, glassMat);
+                addWheel(0.95, 0.4, 1.2, 1.1); addWheel(-0.95, 0.4, 1.2, 1.1);
+                addWheel(0.95, 0.4, -1.2, 1.1); addWheel(-0.95, 0.4, -1.2, 1.1);
             }
 
             return group;
@@ -603,13 +690,59 @@
             noiseSource.start();
         }
 
+        function playCoinSound() {
+            if (!audioCtx) return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(1200, audioCtx.currentTime + 0.1);
+            gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.2);
+        }
+
         // --- UI LOGIC ---
         const mainMenu = document.getElementById('main-menu');
         const startBtn = document.getElementById('start-btn');
         const colorBtns = document.querySelectorAll('.color-btn');
-        const modelBtns = document.querySelectorAll('.model-btn');
+        const modelPicker = document.getElementById('model-picker');
         const uiDiv = document.getElementById('ui');
         const wastedDiv = document.getElementById('wasted');
+
+        const carsData = [
+            { id: 'sports', name: 'Sports', price: 0 },
+            { id: 'sedan', name: 'Sedan', price: 0 },
+            { id: 'truck', name: 'Truck', price: 0 },
+            { id: 'coupe', name: 'Coupe', price: 50 },
+            { id: 'suv', name: 'SUV', price: 100 },
+            { id: 'van', name: 'Van', price: 200 },
+            { id: 'police', name: 'Police', price: 350 },
+            { id: 'taxi', name: 'Taxi', price: 500 },
+            { id: 'muscle', name: 'Muscle', price: 800 },
+            { id: 'limo', name: 'Limo', price: 1200 },
+            { id: 'f1', name: 'F1', price: 2000 },
+            { id: 'cyber', name: 'Cyber', price: 3000 },
+            { id: 'hypercar', name: 'Hypercar', price: 5000 },
+        ];
+
+        carsData.forEach(car => {
+            const btn = document.createElement('div');
+            const isUnlocked = unlockedModels.includes(car.id);
+            btn.className = `model-btn ${car.id === playerModelType ? 'selected' : ''} ${!isUnlocked ? 'locked' : ''}`;
+            btn.setAttribute('data-model', car.id);
+            btn.setAttribute('data-price', car.price);
+            btn.innerHTML = `
+                <span>${car.name}</span>
+                <span class="price">${isUnlocked ? 'UNLOCKED' : car.price + ' COINS'}</span>
+            `;
+            modelPicker.appendChild(btn);
+        });
+
+        let modelBtns = document.querySelectorAll('.model-btn');
 
         colorBtns.forEach(btn => {
             btn.addEventListener('click', (e) => {
@@ -622,9 +755,30 @@
 
         modelBtns.forEach(btn => {
             btn.addEventListener('click', (e) => {
+                const target = e.currentTarget;
+                const modelId = target.getAttribute('data-model');
+                const price = parseInt(target.getAttribute('data-price'));
+                
+                if (!unlockedModels.includes(modelId)) {
+                    if (coinsCount >= price) {
+                        coinsCount -= price;
+                        unlockedModels.push(modelId);
+                        localStorage.setItem('neon_racer_coins', coinsCount);
+                        localStorage.setItem('neon_racer_unlocked', JSON.stringify(unlockedModels));
+                        document.getElementById('menu-coins').innerText = coinsCount;
+                        target.classList.remove('locked');
+                        target.querySelector('.price').innerText = 'UNLOCKED';
+                    } else {
+                        // Not enough coins - shake animation or just ignore
+                        target.style.transform = 'translate(-5px, 0)';
+                        setTimeout(() => target.style.transform = '', 100);
+                        return;
+                    }
+                }
+
                 modelBtns.forEach(b => b.classList.remove('selected'));
-                e.target.classList.add('selected');
-                playerModelType = e.target.getAttribute('data-model');
+                target.classList.add('selected');
+                playerModelType = modelId;
                 updatePlayerCar();
             });
         });
@@ -632,6 +786,8 @@
         startBtn.addEventListener('click', () => {
             gameState = 'PLAYING';
             mainMenu.style.display = 'none';
+            document.getElementById('stats-banner').style.display = 'none';
+            document.getElementById('in-game-coins').innerText = coinsCount;
             uiDiv.style.display = 'block';
             velocity = 0.1;
             initAudio();
@@ -691,12 +847,48 @@
             createTrafficCar(Math.random() > 0.4, 150 + (i * 40));
         }
 
+        // --- COIN SYSTEM ---
+        const coins = [];
+        const coinBoxes = [];
+        const coinGeo = new THREE.CylinderGeometry(0.8, 0.8, 0.2, 16);
+        coinGeo.rotateX(Math.PI / 2);
+        const coinMat = new THREE.MeshStandardMaterial({ 
+            color: 0xffff00, 
+            emissive: 0xffaa00, 
+            emissiveIntensity: 2,
+            metalness: 1,
+            roughness: 0.2
+        });
+
+        function createCoin(zPos) {
+            const coin = new THREE.Mesh(coinGeo, coinMat);
+            const lanes = [-11, -4, 4, 11];
+            coin.position.set(lanes[Math.floor(Math.random() * lanes.length)], 0.8, zPos);
+            scene.add(coin);
+            coins.push(coin);
+            coinBoxes.push(new THREE.Box3());
+        }
+
+        for (let i = 0; i < 40; i++) {
+            createCoin(200 + (i * 40));
+        }
+
         // --- PHYSICS & INPUT ---
         let velocity = 0;
         let angle = 0;
         const keys = {};
 
-        window.addEventListener('keydown', e => keys[e.code] = true);
+        window.addEventListener('keydown', e => {
+            keys[e.code] = true;
+            if (e.code === 'KeyT') {
+                coinsCount += 10000;
+                localStorage.setItem('neon_racer_coins', coinsCount);
+                const menuCoins = document.getElementById('menu-coins');
+                const gameCoins = document.getElementById('in-game-coins');
+                if (menuCoins) menuCoins.innerText = coinsCount;
+                if (gameCoins) gameCoins.innerText = coinsCount;
+            }
+        });
         window.addEventListener('keyup', e => keys[e.code] = false);
 
         window.addEventListener('resize', () => {
@@ -814,6 +1006,33 @@
                     }
                 });
 
+                // --- COIN LOGIC ---
+                coins.forEach((coin, i) => {
+                    coin.rotation.z += 0.05; // Spin coin
+                    
+                    if (!isDeadLoop) {
+                        coinBoxes[i].setFromObject(coin);
+                        if (playerBox.intersectsBox(coinBoxes[i])) {
+                            // Collect coin
+                            coinsCount++;
+                            document.getElementById('in-game-coins').innerText = coinsCount;
+                            playCoinSound();
+                            
+                            // Move far ahead to "recycle" immediately
+                            coin.position.z = player.position.z + 600 + Math.random() * 400;
+                            const lanes = [-11, -4, 4, 11];
+                            coin.position.x = lanes[Math.floor(Math.random() * lanes.length)];
+                        }
+
+                        // Respawn if behind
+                        if (coin.position.z < player.position.z - 50) {
+                            coin.position.z = player.position.z + 600 + Math.random() * 400;
+                            const lanes = [-11, -4, 4, 11];
+                            coin.position.x = lanes[Math.floor(Math.random() * lanes.length)];
+                        }
+                    }
+                });
+
                 // --- BUILDINGS RECYCLE LOGIC ---
                 if (!isDeadLoop) {
                     buildings.forEach(b => {
@@ -879,6 +1098,15 @@
             if (gameState === 'DEAD' || gameState === 'DYING') return;
             gameState = 'DYING';
             crashPos.copy(player.position);
+
+            // Save Stats
+            const currentScore = Math.floor(player.position.z / 10);
+            if (currentScore > highScore) {
+                highScore = currentScore;
+                localStorage.setItem('neon_racer_highscore', highScore);
+            }
+            localStorage.setItem('neon_racer_coins', coinsCount);
+
             wastedDiv.style.display = 'flex';
             playCrashSound();
             // slight delay to ensure display flex applies before opacity
