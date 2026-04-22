@@ -929,6 +929,14 @@
                 addLight(0, 0.3, -2.0, 0xff0000, 0.4, 0.4); // flashing rain light
                 addWheel(0.75, 0.35, 1.4, 1.0); addWheel(-0.75, 0.35, 1.4, 1.0);
                 addWheel(0.85, 0.45, -1.4, 1.3); addWheel(-0.85, 0.45, -1.4, 1.3);
+            } else if (type === 'cyber') {
+                addBox(1.9, 0.7, 3.8, 0.4, 0, bodyMat);
+                addBox(1.7, 0.45, 2.0, 0.95, -0.3, glassMat);
+                addLight(0, 0.4, 1.9, 0xffffff, 1.8, 0.05); // light bar front
+                addLight(0, 0.4, -1.9, 0xff0000, 1.8, 0.05); // light bar back
+                const accentMat = bendMat(new THREE.MeshBasicMaterial({ color: 0x00ffff }));
+                const sL = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.05, 3.8), accentMat); sL.position.set(0.95, 0.4, 0); group.add(sL);
+                const sR = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.05, 3.8), accentMat); sR.position.set(-0.95, 0.4, 0); group.add(sR);
                 addWheel(1.0, 0.4, 1.3, 1.15); addWheel(-1.0, 0.4, 1.3, 1.15);
                 addWheel(1.0, 0.4, -1.3, 1.15); addWheel(-1.0, 0.4, -1.3, 1.15);
             }
@@ -1357,7 +1365,7 @@
                     player.translateZ(velocity);
 
                     playerBox.setFromObject(player);
-                    playerBox.expandByScalar(-0.3);
+                    playerBox.expandByScalar(-0.1); // Reduced shrink to ensure coins are collected
                 } else {
                     // SLOW MOTION CRASH PHYSICS
                     deathTimer += 0.01;
@@ -1388,11 +1396,15 @@
 
                     let dirMult = car.userData.isOncoming ? -1 : 1;
                     
-                    // Smooth steering logic
-                    const targetRot = (car.userData.isOncoming ? Math.PI : 0) + (Math.abs(laneDiff) > 0.3 ? Math.sign(laneDiff) * 0.15 : 0);
+                    // Smooth steering logic with direction correction
+                    const steeringSign = car.userData.isOncoming ? -1 : 1;
+                    const targetRot = (car.userData.isOncoming ? Math.PI : 0) + (Math.abs(laneDiff) > 0.3 ? Math.sign(laneDiff) * 0.15 * steeringSign : 0);
                     car.rotation.y = THREE.MathUtils.lerp(car.rotation.y, targetRot, 0.08);
 
                     car.translateZ(Math.abs(car.userData.velocity) * (isDeadLoop ? 0.2 : 1)); // Slow mo traffic
+                    
+                    // Road boundary safety clamp
+                    car.position.x = THREE.MathUtils.clamp(car.position.x, -18, 18);
 
                     if (!isDeadLoop) {
                         trafficBoxes[i].setFromObject(car);
