@@ -408,17 +408,19 @@
 
         /* Landscape mobile: compact layout */
         @media (max-height: 500px) {
-            #main-menu { justify-content: flex-start; padding-top: 10px; }
-            #main-menu h1 { font-size: 1.8rem; margin: 3px 0; }
-            #main-menu h2 { font-size: 0.8rem; margin: 3px 0; }
-            .options-container { padding: 8px; margin-bottom: 8px; }
-            .model-picker { max-height: 120px; gap: 8px; padding: 5px; }
-            .model-btn { min-width: 75px; font-size: 0.7rem; padding: 4px 5px; gap: 3px; }
-            .model-btn .price { font-size: 0.65rem; }
-            .color-btn { width: 25px; height: 25px; border-width: 2px; }
-            .color-picker { gap: 6px; }
-            .start-btn { padding: 8px 25px; font-size: 1rem; }
-            #stats-banner { top: 8px; transform: translateX(-50%) scale(0.85); }
+            #main-menu { justify-content: flex-start; padding-top: 5px; }
+            #main-menu h1 { font-size: 1.6rem; margin: 2px 0; }
+            #main-menu h2 { font-size: 0.75rem; margin: 2px 0; }
+            .options-container { padding: 5px; margin-bottom: 5px; max-width: 95vw; }
+            .options-container h3 { font-size: 0.8rem; margin: 5px 0; }
+            .model-picker { max-height: 100px; gap: 5px; padding: 3px; }
+            .model-btn { min-width: 70px; font-size: 0.6rem; padding: 3px 4px; gap: 2px; }
+            .model-btn .price { font-size: 0.6rem; }
+            .color-btn { width: 22px; height: 22px; border-width: 2px; }
+            .color-picker { gap: 5px; }
+            .start-btn { padding: 6px 20px; font-size: 0.9rem; }
+            .garage-btn, .back-btn { padding: 6px 20px; font-size: 0.9rem; margin-top: 5px; }
+            #stats-banner { top: 5px; transform: translateX(-50%) scale(0.7); }
         }
 
         /* Show rotate overlay on portrait mobile */
@@ -1249,8 +1251,11 @@
                     }
 
                     let dirMult = car.userData.isOncoming ? -1 : 1;
+                    
+                    // Smooth steering logic
+                    const targetRot = (car.userData.isOncoming ? Math.PI : 0) + (Math.abs(laneDiff) > 0.3 ? Math.sign(laneDiff) * 0.15 : 0);
+                    car.rotation.y = THREE.MathUtils.lerp(car.rotation.y, targetRot, 0.08);
 
-                    car.rotation.y += car.userData.angle * dirMult;
                     car.translateZ(Math.abs(car.userData.velocity) * (isDeadLoop ? 0.2 : 1)); // Slow mo traffic
 
                     if (!isDeadLoop) {
@@ -1448,6 +1453,9 @@
                     b.position.y = height / 2;
                     b.position.x = isLeft ? -28 - Math.random() * 20 : 28 + Math.random() * 20;
                     b.position.z = 100 + i * 30;
+                    // Update mesh scales
+                    b.children[0].scale.y = height;
+                    b.children[1].scale.y = height;
                 });
                 
                 // Reset UI
