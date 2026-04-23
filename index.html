@@ -350,6 +350,8 @@
         #btn-brake { bottom: 10px; right: 30px; }
         #btn-left  { bottom: 40px; left: 30px; }
         #btn-right { bottom: 40px; left: 120px; }
+        #btn-up    { bottom: 150px; right: 30px; display: none; }
+        #btn-down  { bottom: 150px; left: 75px; display: none; }
 
         /* --- FULLSCREEN BUTTON --- */
         #fullscreen-btn {
@@ -556,6 +558,8 @@
         <div class="touch-btn" id="btn-brake">▼</div>
         <div class="touch-btn" id="btn-left">◀</div>
         <div class="touch-btn" id="btn-right">▶</div>
+        <div class="touch-btn" id="btn-up">⇡</div>
+        <div class="touch-btn" id="btn-down">⇣</div>
     </div>
 
     <script type="importmap">
@@ -1176,6 +1180,72 @@
                 addMirror(1.05, 0.6, 0.5); addMirror(-1.05, 0.6, 0.5);
                 addWheel(1.0, 0.4, 1.3, 1.2); addWheel(-1.0, 0.4, 1.3, 1.2);
                 addWheel(1.0, 0.4, -1.3, 1.2); addWheel(-1.0, 0.4, -1.3, 1.2);
+            } else if (type === 'helicopter') {
+                // Fuselage
+                addBox(1.5, 1.4, 3.0, 0.8, 0, bodyMat);
+                addBox(1.3, 0.8, 1.2, 1.1, 0.8, glassMat); // Cockpit area
+                
+                // Tail boom
+                addBox(0.4, 0.4, 3.5, 1.0, -2.5, bodyMat);
+                // Rear rotor
+                const rrGroup = new THREE.Group();
+                const rBlade = new THREE.Mesh(new THREE.BoxGeometry(0.05, 1.2, 0.15), detailMat);
+                rrGroup.add(rBlade);
+                rrGroup.position.set(0.3, 1.0, -4.0);
+                group.add(rrGroup);
+                group.userData.rearRotor = rrGroup;
+                
+                // Main Rotor
+                addBox(0.2, 0.6, 0.2, 1.8, 0, detailMat); // Shaft
+                const rotor = new THREE.Group();
+                const b1 = new THREE.Mesh(new THREE.BoxGeometry(6.5, 0.05, 0.3), detailMat);
+                rotor.add(b1);
+                const b2 = new THREE.Mesh(new THREE.BoxGeometry(6.5, 0.05, 0.3), detailMat);
+                b2.rotation.y = Math.PI/2;
+                rotor.add(b2);
+                rotor.position.y = 2.1;
+                group.add(rotor);
+                group.userData.mainRotor = rotor;
+                
+                // Skids
+                const skidL = addBox(0.15, 0.15, 3.5, 0.1, 0, detailMat);
+                skidL.position.x = 0.8;
+                const skidR = addBox(0.15, 0.15, 3.5, 0.1, 0, detailMat);
+                skidR.position.x = -0.8;
+                const legGeo = new THREE.BoxGeometry(0.1, 0.4, 0.1);
+                for(let z of [-1, 1]) {
+                    const lL = new THREE.Mesh(legGeo, detailMat); lL.position.set(0.8, 0.3, z); group.add(lL);
+                    const lR = new THREE.Mesh(legGeo, detailMat); lR.position.set(-0.8, 0.3, z); group.add(lR);
+                }
+            } else if (type === 'plane') {
+                // Fuselage
+                addBox(1.6, 1.6, 5.0, 0.8, 0, bodyMat);
+                addBox(1.4, 0.8, 1.5, 1.4, 1.5, glassMat); // Cockpit
+                
+                // Wings
+                const wings = new THREE.Mesh(new THREE.BoxGeometry(10.0, 0.15, 1.8), bodyMat);
+                wings.position.set(0, 0.8, 0.5);
+                group.add(wings);
+                
+                // Tail
+                const hTail = new THREE.Mesh(new THREE.BoxGeometry(4.0, 0.1, 1.2), bodyMat);
+                hTail.position.set(0, 0.8, -2.2);
+                group.add(hTail);
+                const vTail = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.8, 1.2), bodyMat);
+                vTail.position.set(0, 1.6, -2.2);
+                group.add(vTail);
+                
+                // Propeller
+                const prop = new THREE.Group();
+                const b = new THREE.Mesh(new THREE.BoxGeometry(3.5, 0.2, 0.1), detailMat);
+                prop.add(b);
+                prop.position.set(0, 0.8, 2.6);
+                group.add(prop);
+                group.userData.propeller = prop;
+                
+                // Wheels (Small for landing)
+                addWheel(0.6, 0.2, 1.5, 0.6); addWheel(-0.6, 0.2, 1.5, 0.6);
+                addWheel(0, 0.2, -1.8, 0.6);
             }
 
             return group;
@@ -1356,6 +1426,8 @@
             { id: 'f1', name: 'F1', price: 2000 },
             { id: 'cyber', name: 'Cyber', price: 3000 },
             { id: 'hypercar', name: 'Hypercar', price: 5000 },
+            { id: 'helicopter', name: 'Helicopter', price: 10000 },
+            { id: 'plane', name: 'Plane', price: 15000 },
         ];
 
         carsData.forEach(car => {
@@ -1414,11 +1486,17 @@
 
         startBtn.addEventListener('click', () => {
             gameState = 'PLAYING';
+            targetY = ['helicopter', 'plane'].includes(playerModelType) ? 10 : 0;
             mainMenu.style.display = 'none';
             document.getElementById('stats-banner').style.display = 'none';
             document.getElementById('in-game-coins').innerText = coinsCount;
             uiDiv.style.display = 'block';
-            if (isMobile) document.getElementById('mobile-controls').style.display = 'block';
+            if (isMobile) {
+                document.getElementById('mobile-controls').style.display = 'block';
+                const isAir = ['helicopter', 'plane'].includes(playerModelType);
+                document.getElementById('btn-up').style.display = isAir ? 'flex' : 'none';
+                document.getElementById('btn-down').style.display = isAir ? 'flex' : 'none';
+            }
             velocity = 0.1;
             initAudio();
         });
@@ -1531,7 +1609,9 @@
                 'btn-gas': 'KeyW',
                 'btn-brake': 'KeyS',
                 'btn-left': 'KeyA',
-                'btn-right': 'KeyD'
+                'btn-right': 'KeyD',
+                'btn-up': 'Space',
+                'btn-down': 'ShiftLeft'
             };
 
             Object.entries(touchMap).forEach(([btnId, keyCode]) => {
@@ -1570,6 +1650,7 @@
 
         // Curve target generation
         let targetCurve = 0;
+        let targetY = 0;
         setInterval(() => {
             if (gameState === 'PLAYING') {
                 targetCurve = (Math.random() - 0.5) * 6.0;
@@ -1584,8 +1665,7 @@
 
                 let isDeadLoop = (gameState === 'DYING');
 
-                // --- PLAYER PHYSICS ---
-                if (!isDeadLoop) {
+                 if (!isDeadLoop) {
                     if (keys['KeyW']) velocity += 0.015;
                     if (keys['KeyS']) velocity -= 0.025; // Brakes
 
@@ -1598,12 +1678,42 @@
                     velocity *= 0.98; // Drag
                     angle *= 0.82;    // Steering friction
                     velocity = Math.max(-0.3, Math.min(velocity, 2.5));
+                    
+                    const isAir = ['helicopter', 'plane'].includes(playerModelType);
+                    const hoverHeight = isAir ? 10 : 0;
+                    if (gameState === 'PLAYING') {
+                        if (isAir) {
+                            if (keys['Space']) targetY = Math.min(targetY + 0.4, 40);
+                            if (keys['ShiftLeft'] || keys['ShiftRight']) targetY = Math.max(targetY - 0.4, 0.5);
+                        } else {
+                            targetY = 0;
+                        }
+                    }
+                    
+                    const finalTargetY = (gameState === 'PLAYING') ? (isAir ? Math.max(targetY, 2) : 0) : player.position.y;
+                    player.position.y += (finalTargetY - player.position.y) * 0.1;
 
                     player.rotation.y += angle * (velocity * 0.5);
+                    
+                    // Tilting and Banking
+                    if (isAir) {
+                        playerMesh.rotation.x = THREE.MathUtils.lerp(playerMesh.rotation.x, (velocity * 0.1), 0.1);
+                        playerMesh.rotation.z = THREE.MathUtils.lerp(playerMesh.rotation.z, (angle * 2), 0.1);
+                    } else {
+                        playerMesh.rotation.x = 0;
+                        playerMesh.rotation.z = 0;
+                    }
+
                     player.translateZ(velocity);
 
                     playerBox.setFromObject(player);
-                    playerBox.expandByScalar(-0.1); // Reduced shrink to ensure coins are collected
+                    // Adjust collision box for altitude
+                    if (isAir && player.position.y > 5) {
+                        playerBox.min.y = 1000; // Move box away to avoid traffic
+                        playerBox.max.y = 1001;
+                    } else {
+                        playerBox.expandByScalar(-0.1);
+                    }
                 } else {
                     // SLOW MOTION CRASH PHYSICS
                     deathTimer += 0.01;
@@ -1683,6 +1793,17 @@
                         }
                     }
                 });
+
+                // --- AIRCRAFT ANIMATIONS ---
+                if (playerMesh.userData.mainRotor) {
+                    playerMesh.userData.mainRotor.rotation.y += 0.5;
+                }
+                if (playerMesh.userData.rearRotor) {
+                    playerMesh.userData.rearRotor.rotation.x += 0.5;
+                }
+                if (playerMesh.userData.propeller) {
+                    playerMesh.userData.propeller.rotation.z += 0.5;
+                }
 
                 // --- COIN LOGIC ---
                 coins.forEach((coin, i) => {
@@ -1821,10 +1942,12 @@
                 gameState = 'MENU';
                 customUniforms.uCurve.value = 0;
                 targetCurve = 0;
+                targetY = 0;
 
                 // Reset player
                 player.position.set(7, 0, 0);
                 player.rotation.set(0, 0, 0);
+                playerMesh.rotation.set(0, 0, 0);
                 velocity = 0;
                 angle = 0;
                 deathTimer = 0;
