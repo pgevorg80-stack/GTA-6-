@@ -448,7 +448,6 @@
                 justify-content: flex-start;
             }
             
-            .model-btn { min-width: 100px; font-size: 0.8rem; padding: 6px 10px; gap: 4px; }
             .model-btn .price { font-size: 0.7rem; }
             
             .color-btn { width: 35px; height: 35px; border-width: 3px; }
@@ -516,31 +515,45 @@
             </div>
         </div>
 
-        <div id="menu-view-garage" class="menu-view" style="display: none;">
+        <div id="menu-view-garage" class="menu-view" style="display: none; flex-direction: column; align-items: center;">
             <h2 style="margin-top: 10px;">GARAGE & SHOP</h2>
-            <div class="options-container">
-                <h3>Vehicle Type</h3>
-                <div class="model-picker" id="model-picker">
-                    <!-- Populated by JS -->
-                </div>
+            
+            <!-- Step 1: Category Selection -->
+            <div id="garage-category-selection" style="display: flex; gap: 20px; margin: 40px 0;">
+                <button class="start-btn" id="btn-select-land" style="padding: 30px 60px; font-size: 1.5rem; background: linear-gradient(45deg, #00ffff, #0088ff);">LAND</button>
+                <button class="start-btn" id="btn-select-air" style="padding: 30px 60px; font-size: 1.5rem; background: linear-gradient(45deg, #ff00ff, #8800ff);">AIR</button>
+            </div>
 
-                <h3>Paint Job</h3>
-                <div class="color-picker" id="color-picker">
-                    <div class="color-btn selected" style="background-color: #00ffff; box-shadow: 0 0 20px #00ffff;"
-                        data-color="0x00ffff"></div>
-                    <div class="color-btn" style="background-color: #ff0055; box-shadow: 0 0 20px #ff0055;"
-                        data-color="0xff0055"></div>
-                    <div class="color-btn" style="background-color: #ffff00; box-shadow: 0 0 20px #ffff00;"
-                        data-color="0xffff00"></div>
-                    <div class="color-btn" style="background-color: #00ff00; box-shadow: 0 0 20px #00ff00;"
-                        data-color="0x00ff00"></div>
-                    <div class="color-btn" style="background-color: #ffffff; box-shadow: 0 0 20px #ffffff;"
-                        data-color="0xffffff"></div>
-                    <div class="color-btn" style="background-color: #000000; box-shadow: 0 0 20px #555; border-color: #555;"
-                        data-color="0x111111"></div>
+            <!-- Step 2: Vehicle Picker (Initially Hidden) -->
+            <div id="garage-vehicle-picker" style="display: none; width: 100%; flex-direction: column; align-items: center;">
+                <div class="options-container">
+                    <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 20px; border-bottom: 1px solid rgba(0,255,255,0.2); padding-bottom: 10px;">
+                        <h3 id="current-category-label" style="margin: 0; color: #0ff; letter-spacing: 3px;">LAND VEHICLES</h3>
+                        <button class="back-btn" id="btn-change-category" style="margin: 0; font-size: 0.9rem; padding: 10px 20px;">SWITCH CATEGORY</button>
+                    </div>
+                    <h3>Vehicle Type</h3>
+                    <div class="model-picker" id="model-picker">
+                        <!-- Populated by JS -->
+                    </div>
+
+                    <h3>Paint Job</h3>
+                    <div class="color-picker" id="color-picker">
+                        <div class="color-btn selected" style="background-color: #00ffff; box-shadow: 0 0 20px #00ffff;"
+                            data-color="0x00ffff"></div>
+                        <div class="color-btn" style="background-color: #ff0055; box-shadow: 0 0 20px #ff0055;"
+                            data-color="0xff0055"></div>
+                        <div class="color-btn" style="background-color: #ffff00; box-shadow: 0 0 20px #ffff00;"
+                            data-color="0xffff00"></div>
+                        <div class="color-btn" style="background-color: #00ff00; box-shadow: 0 0 20px #00ff00;"
+                            data-color="0x00ff00"></div>
+                        <div class="color-btn" style="background-color: #ffffff; box-shadow: 0 0 20px #ffffff;"
+                            data-color="0xffffff"></div>
+                        <div class="color-btn" style="background-color: #000000; box-shadow: 0 0 20px #555; border-color: #555;"
+                            data-color="0x111111"></div>
+                    </div>
                 </div>
             </div>
-            <button class="back-btn" id="back-to-main-btn">Back</button>
+            <button class="back-btn" id="back-to-main-btn" style="margin-top: 20px;">Back</button>
         </div>
     </div>
 
@@ -597,7 +610,7 @@
 
         let coinsCount = parseInt(localStorage.getItem('neon_racer_coins')) || 0;
         let highScore = parseInt(localStorage.getItem('neon_racer_highscore')) || 0;
-        let unlockedModels = JSON.parse(localStorage.getItem('neon_racer_unlocked')) || ['sports', 'sedan', 'truck'];
+        let unlockedModels = JSON.parse(localStorage.getItem('neon_racer_unlocked')) || ['sports', 'sedan', 'truck', 'drone'];
 
         document.getElementById('menu-highscore').innerText = highScore;
         document.getElementById('menu-coins').innerText = coinsCount;
@@ -606,6 +619,8 @@
         const customUniforms = {
             uCurve: { value: 0.0 }
         };
+
+        const AIR_MODELS = ['helicopter', 'plane', 'drone', 'biplane', 'fighter_jet'];
 
         function bendMat(material) {
             material.onBeforeCompile = (shader) => {
@@ -779,6 +794,73 @@
             createOverheadBanner(400 + i * 400);
         }
 
+        // --- HIGH ALTITUDE HAZARDS ---
+        const hazards = [];
+        function createRadioTower(zPos) {
+            const group = new THREE.Group();
+            const height = 60 + Math.random() * 40;
+            const towerGeo = new THREE.CylinderGeometry(0.5, 4, height, 4);
+            const towerMat = bendMat(new THREE.MeshStandardMaterial({ color: 0x333333 }));
+            const tower = new THREE.Mesh(towerGeo, towerMat);
+            group.add(tower);
+            
+            // Neon lights on tower
+            const lightGeo = new THREE.BoxGeometry(1.2, 1.2, 1.2);
+            const lightMat = bendMat(new THREE.MeshBasicMaterial({ color: 0xff0000 }));
+            for(let i=0; i<5; i++) {
+                const l = new THREE.Mesh(lightGeo, lightMat);
+                l.position.y = -height/2 + (i/4)*height;
+                group.add(l);
+            }
+            
+            group.position.set(Math.random() > 0.5 ? -50 : 50, height/2, zPos);
+            scene.add(group);
+            hazards.push(group);
+        }
+
+
+
+        for (let i = 0; i < 20; i++) {
+            createRadioTower(200 + i * 400);
+        }
+
+        function createFloatingAdvert(zPos) {
+            const group = new THREE.Group();
+            const w = 15 + Math.random() * 10;
+            const h = 8 + Math.random() * 6;
+            const tex = bbTextures[Math.floor(Math.random() * bbTextures.length)];
+            const mat = bendMat(new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide }));
+            const board = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.5), mat);
+            group.add(board);
+            
+            // Glowing Frame
+            const colors = [0xff00ff, 0x00ffff, 0xffff00];
+            const frameMat = bendMat(new THREE.MeshBasicMaterial({ color: colors[Math.floor(Math.random()*3)] }));
+            const frameThick = 0.5;
+            const fTop = new THREE.Mesh(new THREE.BoxGeometry(w + frameThick, frameThick, 0.7), frameMat);
+            fTop.position.y = h/2; group.add(fTop);
+            const fBot = new THREE.Mesh(new THREE.BoxGeometry(w + frameThick, frameThick, 0.7), frameMat);
+            fBot.position.y = -h/2; group.add(fBot);
+            
+            // Support Cables (Glowy lines going up)
+            const cableGeo = new THREE.BoxGeometry(0.1, 100, 0.1);
+            const cableMat = bendMat(new THREE.MeshBasicMaterial({ color: 0x333333 }));
+            const c1 = new THREE.Mesh(cableGeo, cableMat);
+            c1.position.set(w/2 - 1, 50 + h/2, 0); group.add(c1);
+            const c2 = new THREE.Mesh(cableGeo, cableMat);
+            c2.position.set(-w/2 + 1, 50 + h/2, 0); group.add(c2);
+            
+            // Restrict X to keep adverts over the road and away from buildings
+            const xPos = (Math.random() - 0.5) * 35; 
+            group.position.set(xPos, 25, zPos);
+            scene.add(group);
+            hazards.push(group);
+        }
+
+        for (let i = 0; i < 40; i++) {
+            createFloatingAdvert(300 + i * 120);
+        }
+
         function createBuilding(zPos) {
             const group = new THREE.Group();
 
@@ -859,7 +941,7 @@
             }
 
             group.position.y = height / 2;
-            group.position.x = isLeft ? -25 - Math.random() * 15 : 25 + Math.random() * 15;
+            group.position.x = isLeft ? -40 - Math.random() * 15 : 40 + Math.random() * 15;
             group.position.z = zPos;
 
             scene.add(group);
@@ -930,6 +1012,21 @@
         const centerLine = createLine(0, 0xffff00, 0.4); // Center Yellow
         const leftLine = createLine(17, 0xff00ff, 0.6); // Left Edge
         const rightLine = createLine(-17, 0xff00ff, 0.6); // Right Edge
+
+        // --- SKY REFLECTORS (Cat's Eyes for Planes) ---
+        const skyReflectors = [];
+        const skyReflGeo = new THREE.SphereGeometry(0.2, 8, 8);
+        const skyReflMat = bendMat(new THREE.MeshBasicMaterial({ color: 0x00ffff, transparent: true, opacity: 0.6 }));
+        for (let i = 0; i < 40; i++) {
+            const l = new THREE.Mesh(skyReflGeo, skyReflMat);
+            l.position.set(-20, 25, i * 50);
+            scene.add(l);
+            skyReflectors.push(l);
+            const r = new THREE.Mesh(skyReflGeo, skyReflMat);
+            r.position.set(20, 25, i * 50);
+            scene.add(r);
+            skyReflectors.push(r);
+        }
 
         // --- SIDEWALKS (OPTIMIZED & BENDING) ---
         const swGeo = new THREE.PlaneGeometry(60, 2000, 1, 100); // Added segments to allow bending
@@ -1246,6 +1343,57 @@
                 // Wheels (Small for landing)
                 addWheel(0.6, 0.2, 1.5, 0.6); addWheel(-0.6, 0.2, 1.5, 0.6);
                 addWheel(0, 0.2, -1.8, 0.6);
+            } else if (type === 'biplane') {
+                // Fuselage
+                addBox(1.0, 1.0, 4.0, 0.6, 0, bodyMat);
+                // Two Wings
+                const w1 = new THREE.Mesh(new THREE.BoxGeometry(8.0, 0.1, 1.5), bodyMat); w1.position.set(0, 0.5, 0.5); group.add(w1);
+                const w2 = new THREE.Mesh(new THREE.BoxGeometry(8.0, 0.1, 1.5), bodyMat); w2.position.set(0, 1.5, 0.5); group.add(w2);
+                // Struts
+                const strutGeo = new THREE.BoxGeometry(0.1, 1.0, 0.1);
+                for(let x of [-3, 3]) {
+                    const s = new THREE.Mesh(strutGeo, detailMat); s.position.set(x, 1.0, 0.5); group.add(s);
+                }
+                // Tail
+                const hTail = new THREE.Mesh(new THREE.BoxGeometry(3.0, 0.1, 1.0), bodyMat); hTail.position.set(0, 0.6, -1.8); group.add(hTail);
+                const vTail = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.2, 1.0), bodyMat); vTail.position.set(0, 1.2, -1.8); group.add(vTail);
+                // Propeller
+                const prop = new THREE.Group();
+                prop.add(new THREE.Mesh(new THREE.BoxGeometry(3.0, 0.2, 0.1), detailMat));
+                prop.position.set(0, 0.6, 2.1); group.add(prop); group.userData.propeller = prop;
+            } else if (type === 'drone') {
+                // Central Hub
+                addBox(1.2, 0.4, 1.2, 0.4, 0, bodyMat);
+                // Arms
+                const armMat = bendMat(new THREE.MeshStandardMaterial({ color: 0x222222 }));
+                const armGeo = new THREE.BoxGeometry(0.2, 0.2, 4.0);
+                const a1 = new THREE.Mesh(armGeo, armMat); a1.rotation.y = Math.PI/4; a1.position.y = 0.4; group.add(a1);
+                const a2 = new THREE.Mesh(armGeo, armMat); a2.rotation.y = -Math.PI/4; a2.position.y = 0.4; group.add(a2);
+                // 4 Rotors
+                group.userData.rotors = [];
+                for(let x of [-1.4, 1.4]) {
+                    for(let z of [-1.4, 1.4]) {
+                        const r = new THREE.Group();
+                        r.add(new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.05, 0.15), detailMat));
+                        r.position.set(x, 0.6, z); group.add(r);
+                        group.userData.rotors.push(r);
+                    }
+                }
+            } else if (type === 'fighter_jet') {
+                // Body
+                addBox(1.2, 0.8, 6.0, 0.6, 0, bodyMat);
+                addBox(1.0, 0.6, 1.5, 1.1, 1.0, glassMat); // Canopy
+                // Wings (Delta)
+                const wingGeo = new THREE.BufferGeometry();
+                const v = new Float32Array([ 0,0,2, 4,0,-2, -4,0,-2 ]);
+                wingGeo.setAttribute('position', new THREE.BufferAttribute(v, 3));
+                const wings = new THREE.Mesh(wingGeo, bodyMat); wings.position.y = 0.6; group.add(wings);
+                // Fins
+                const vTail = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.5, 1.5), bodyMat); vTail.position.set(0, 1.4, -2.5); group.add(vTail);
+                // Engines
+                const engGeo = new THREE.CylinderGeometry(0.5, 0.5, 1.0, 8); engGeo.rotateX(Math.PI/2);
+                const e1 = new THREE.Mesh(engGeo, detailMat); e1.position.set(0.4, 0.5, -3.2); group.add(e1);
+                const e2 = new THREE.Mesh(engGeo, detailMat); e2.position.set(-0.4, 0.5, -3.2); group.add(e2);
             }
 
             return group;
@@ -1413,37 +1561,90 @@
         const wastedDiv = document.getElementById('wasted');
 
         const carsData = [
-            { id: 'sports', name: 'Sports', price: 0 },
-            { id: 'sedan', name: 'Sedan', price: 0 },
-            { id: 'truck', name: 'Truck', price: 0 },
-            { id: 'coupe', name: 'Coupe', price: 50 },
-            { id: 'suv', name: 'SUV', price: 100 },
-            { id: 'van', name: 'Van', price: 200 },
-            { id: 'police', name: 'Police', price: 350 },
-            { id: 'taxi', name: 'Taxi', price: 500 },
-            { id: 'muscle', name: 'Muscle', price: 800 },
-            { id: 'limo', name: 'Limo', price: 1200 },
-            { id: 'f1', name: 'F1', price: 2000 },
-            { id: 'cyber', name: 'Cyber', price: 3000 },
-            { id: 'hypercar', name: 'Hypercar', price: 5000 },
-            { id: 'helicopter', name: 'Helicopter', price: 10000 },
-            { id: 'plane', name: 'Plane', price: 15000 },
+            { id: 'sports', name: 'Sports', price: 0, category: 'land' },
+            { id: 'sedan', name: 'Sedan', price: 0, category: 'land' },
+            { id: 'truck', name: 'Truck', price: 0, category: 'land' },
+            { id: 'coupe', name: 'Coupe', price: 50, category: 'land' },
+            { id: 'suv', name: 'SUV', price: 100, category: 'land' },
+            { id: 'van', name: 'Van', price: 200, category: 'land' },
+            { id: 'police', name: 'Police', price: 350, category: 'land' },
+            { id: 'taxi', name: 'Taxi', price: 500, category: 'land' },
+            { id: 'muscle', name: 'Muscle', price: 800, category: 'land' },
+            { id: 'limo', name: 'Limo', price: 1200, category: 'land' },
+            { id: 'f1', name: 'F1', price: 2000, category: 'land' },
+            { id: 'cyber', name: 'Cyber', price: 3000, category: 'land' },
+            { id: 'hypercar', name: 'Hypercar', price: 5000, category: 'land' },
+            
+            { id: 'drone', name: 'Drone', price: 0, category: 'air' },
+            { id: 'biplane', name: 'Biplane', price: 1000, category: 'air' },
+            { id: 'helicopter', name: 'Helicopter', price: 3000, category: 'air' },
+            { id: 'plane', name: 'Plane', price: 5000, category: 'air' },
+            { id: 'fighter_jet', name: 'Fighter Jet', price: 10000, category: 'air' }
         ];
 
-        carsData.forEach(car => {
-            const btn = document.createElement('div');
-            const isUnlocked = unlockedModels.includes(car.id);
-            btn.className = `model-btn ${car.id === playerModelType ? 'selected' : ''} ${!isUnlocked ? 'locked' : ''}`;
-            btn.setAttribute('data-model', car.id);
-            btn.setAttribute('data-price', car.price);
-            btn.innerHTML = `
-                <span>${car.name}</span>
-                <span class="price">${isUnlocked ? 'UNLOCKED' : car.price + ' COINS'}</span>
-            `;
-            modelPicker.appendChild(btn);
-        });
+        let currentCategory = 'land';
+        function populateModelPicker() {
+            modelPicker.innerHTML = '';
+            carsData.filter(c => c.category === currentCategory).forEach(car => {
+                const btn = document.createElement('div');
+                const isUnlocked = unlockedModels.includes(car.id);
+                btn.className = `model-btn ${car.id === playerModelType ? 'selected' : ''} ${!isUnlocked ? 'locked' : ''}`;
+                btn.setAttribute('data-model', car.id);
+                btn.setAttribute('data-price', car.price);
+                btn.innerHTML = `
+                    <span>${car.name}</span>
+                    <span class="price">${isUnlocked ? 'UNLOCKED' : car.price + ' COINS'}</span>
+                `;
+                btn.addEventListener('click', handleModelSelect);
+                modelPicker.appendChild(btn);
+            });
+        }
 
-        let modelBtns = document.querySelectorAll('.model-btn');
+        function handleModelSelect(e) {
+            const target = e.currentTarget;
+            const modelId = target.getAttribute('data-model');
+            const price = parseInt(target.getAttribute('data-price'));
+            
+            if (!unlockedModels.includes(modelId)) {
+                if (coinsCount >= price) {
+                    coinsCount -= price;
+                    unlockedModels.push(modelId);
+                    localStorage.setItem('neon_racer_coins', coinsCount);
+                    localStorage.setItem('neon_racer_unlocked', JSON.stringify(unlockedModels));
+                    document.getElementById('menu-coins').innerText = coinsCount;
+                    target.classList.remove('locked');
+                    target.querySelector('.price').innerText = 'UNLOCKED';
+                } else {
+                    target.style.transform = 'translate(-5px, 0)';
+                    setTimeout(() => target.style.transform = '', 100);
+                    return;
+                }
+            }
+
+            document.querySelectorAll('.model-btn').forEach(b => b.classList.remove('selected'));
+            target.classList.add('selected');
+            playerModelType = modelId;
+            updatePlayerCar();
+        }
+
+        function selectGarageCategory(cat) {
+            currentCategory = cat;
+            document.getElementById('garage-category-selection').style.display = 'none';
+            document.getElementById('garage-vehicle-picker').style.display = 'flex';
+            document.getElementById('current-category-label').innerText = cat === 'land' ? 'LAND VEHICLES' : 'AIR VEHICLES';
+            populateModelPicker();
+        }
+
+        function backToCategories() {
+            document.getElementById('garage-category-selection').style.display = 'flex';
+            document.getElementById('garage-vehicle-picker').style.display = 'none';
+        }
+
+        document.getElementById('btn-select-land').addEventListener('click', () => selectGarageCategory('land'));
+        document.getElementById('btn-select-air').addEventListener('click', () => selectGarageCategory('air'));
+        document.getElementById('btn-change-category').addEventListener('click', backToCategories);
+
+        populateModelPicker();
 
         colorBtns.forEach(btn => {
             btn.addEventListener('click', (e) => {
@@ -1454,51 +1655,31 @@
             });
         });
 
-        modelBtns.forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const target = e.currentTarget;
-                const modelId = target.getAttribute('data-model');
-                const price = parseInt(target.getAttribute('data-price'));
-                
-                if (!unlockedModels.includes(modelId)) {
-                    if (coinsCount >= price) {
-                        coinsCount -= price;
-                        unlockedModels.push(modelId);
-                        localStorage.setItem('neon_racer_coins', coinsCount);
-                        localStorage.setItem('neon_racer_unlocked', JSON.stringify(unlockedModels));
-                        document.getElementById('menu-coins').innerText = coinsCount;
-                        target.classList.remove('locked');
-                        target.querySelector('.price').innerText = 'UNLOCKED';
-                    } else {
-                        // Not enough coins - shake animation or just ignore
-                        target.style.transform = 'translate(-5px, 0)';
-                        setTimeout(() => target.style.transform = '', 100);
-                        return;
-                    }
-                }
-
-                modelBtns.forEach(b => b.classList.remove('selected'));
-                target.classList.add('selected');
-                playerModelType = modelId;
-                updatePlayerCar();
-            });
-        });
-
         startBtn.addEventListener('click', () => {
             gameState = 'PLAYING';
-            targetY = ['helicopter', 'plane'].includes(playerModelType) ? 10 : 0;
+            targetY = AIR_MODELS.includes(playerModelType) ? 25 : 0;
             mainMenu.style.display = 'none';
             document.getElementById('stats-banner').style.display = 'none';
             document.getElementById('in-game-coins').innerText = coinsCount;
             uiDiv.style.display = 'block';
             if (isMobile) {
                 document.getElementById('mobile-controls').style.display = 'block';
-                const isAir = ['helicopter', 'plane'].includes(playerModelType);
-                document.getElementById('btn-up').style.display = isAir ? 'flex' : 'none';
-                document.getElementById('btn-down').style.display = isAir ? 'flex' : 'none';
+                const isAir = AIR_MODELS.includes(playerModelType);
+                document.getElementById('btn-up').style.display = 'none';
+                document.getElementById('btn-down').style.display = 'none';
             }
             velocity = 0.1;
             initAudio();
+
+            // Force Coins to right height immediately
+            const isAir = AIR_MODELS.includes(playerModelType);
+            coins.forEach((coin, i) => {
+                coin.position.y = isAir ? 25 : 0.8;
+                // Also spread them out slightly more if they are on top of each other
+                if (coin.position.z < player.position.z + 50) {
+                   coin.position.z = player.position.z + 200 + (i * 35);
+                }
+            });
         });
 
         // --- TRAFFIC SYSTEM ---
@@ -1556,6 +1737,27 @@
             createTrafficCar(Math.random() > 0.4, 150 + (i * 40));
         }
 
+        // --- AIR TRAFFIC ---
+        const airTraffic = [];
+        const airTrafficBoxes = [];
+        function createAirTraffic(initialZ) {
+            const models = ['plane', 'biplane', 'helicopter'];
+            const type = models[Math.floor(Math.random() * models.length)];
+            const color = [0xff00ff, 0x00ffff, 0xffff00][Math.floor(Math.random()*3)];
+            const ship = createCarMesh(type, color, true);
+            const group = new THREE.Group();
+            group.add(ship);
+            group.position.set((Math.random()-0.5)*40, 10 + Math.random()*20, initialZ);
+            group.userData = {
+                velocity: 0.2 + Math.random()*0.3,
+                mesh: ship
+            };
+            scene.add(group);
+            airTraffic.push(group);
+            airTrafficBoxes.push(new THREE.Box3());
+        }
+        for(let i=0; i<5; i++) createAirTraffic(500 + i*400);
+
         // --- COIN SYSTEM ---
         const coins = [];
         const coinBoxes = [];
@@ -1571,16 +1773,22 @@
 
         function createCoin(zPos) {
             const coin = new THREE.Mesh(coinGeo, coinMat);
-            const lanes = [-11, -4, 4, 11];
-            coin.position.set(lanes[Math.floor(Math.random() * lanes.length)], 0.8, zPos);
+            const isAir = AIR_MODELS.includes(playerModelType);
+            const lanes = [-14, -5, 5, 14]; // Wider lanes for aircraft
+            const x = lanes[Math.floor(Math.random() * lanes.length)];
+            let y = 0.8;
+            if (isAir) {
+                y = 25;
+            }
+            coin.position.set(x, y, zPos);
             scene.add(coin);
             coins.push(coin);
             coinBoxes.push(new THREE.Box3());
         }
 
-        const coinCount = isMobile ? 30 : 40;
+        const coinCount = isMobile ? 50 : 80;
         for (let i = 0; i < coinCount; i++) {
-            createCoin(200 + (i * 40));
+            createCoin(50 + (i * 35));
         }
 
         // --- PHYSICS & INPUT ---
@@ -1679,15 +1887,10 @@
                     angle *= 0.82;    // Steering friction
                     velocity = Math.max(-0.3, Math.min(velocity, 2.5));
                     
-                    const isAir = ['helicopter', 'plane'].includes(playerModelType);
-                    const hoverHeight = isAir ? 10 : 0;
+                    const isAir = AIR_MODELS.includes(playerModelType);
+                    const hoverHeight = isAir ? 25 : 0;
                     if (gameState === 'PLAYING') {
-                        if (isAir) {
-                            if (keys['Space']) targetY = Math.min(targetY + 0.4, 40);
-                            if (keys['ShiftLeft'] || keys['ShiftRight']) targetY = Math.max(targetY - 0.4, 0.5);
-                        } else {
-                            targetY = 0;
-                        }
+                        targetY = hoverHeight;
                     }
                     
                     const finalTargetY = (gameState === 'PLAYING') ? (isAir ? Math.max(targetY, 2) : 0) : player.position.y;
@@ -1707,13 +1910,7 @@
                     player.translateZ(velocity);
 
                     playerBox.setFromObject(player);
-                    // Adjust collision box for altitude
-                    if (isAir && player.position.y > 5) {
-                        playerBox.min.y = 1000; // Move box away to avoid traffic
-                        playerBox.max.y = 1001;
-                    } else {
-                        playerBox.expandByScalar(-0.1);
-                    }
+                    playerBox.expandByScalar(-0.1); 
                 } else {
                     // SLOW MOTION CRASH PHYSICS
                     deathTimer += 0.01;
@@ -1755,9 +1952,14 @@
                     car.position.x = THREE.MathUtils.clamp(car.position.x, -18, 18);
 
                     if (!isDeadLoop) {
-                        trafficBoxes[i].setFromObject(car);
-                        trafficBoxes[i].expandByScalar(-0.2);
-                        if (playerBox.intersectsBox(trafficBoxes[i])) triggerWasted();
+                        // MANUAL BOX UPDATE (FASTER THAN setFromObject)
+                        trafficBoxes[i].min.set(car.position.x - 1.5, car.position.y, car.position.z - 2.5);
+                        trafficBoxes[i].max.set(car.position.x + 1.5, car.position.y + 2.5, car.position.z + 2.5);
+                        
+                        const isAir = AIR_MODELS.includes(playerModelType);
+                        if (!(isAir && player.position.y > 5)) {
+                            if (playerBox.intersectsBox(trafficBoxes[i])) triggerWasted();
+                        }
 
                         // Respawn Logic with Pacing
                         const dist = car.position.z - player.position.z;
@@ -1794,23 +1996,70 @@
                     }
                 });
 
+                // --- AIR TRAFFIC PHYSICS ---
+                airTraffic.forEach((ship, i) => {
+                    ship.translateZ(ship.userData.velocity * (isDeadLoop ? 0.2 : 1));
+                    if (!isDeadLoop) {
+                        airTrafficBoxes[i].min.set(ship.position.x - 3, ship.position.y - 1, ship.position.z - 4);
+                        airTrafficBoxes[i].max.set(ship.position.x + 3, ship.position.y + 1, ship.position.z + 4);
+                        if (playerBox.intersectsBox(airTrafficBoxes[i])) triggerWasted();
+                        if (ship.position.z < player.position.z - 100) {
+                            ship.position.z = player.position.z + 1000 + Math.random()*500;
+                            ship.position.x = (Math.random()-0.5)*60;
+                            ship.position.y = 25;
+                        }
+                    }
+                });
+
+                // --- HAZARDS RECYCLE ---
+                if (!isDeadLoop) {
+                    hazards.forEach(h => {
+                        if (h.position.z < player.position.z - 100) {
+                            h.position.z += 4800; 
+                            if (h.children.length > 1 && h.children[0].geometry.type === 'CylinderGeometry') {
+                                // Radio tower
+                                h.position.x = Math.random() > 0.5 ? -50 : 50;
+                            } else {
+                                // Floating Advert - Randomize side but keep over road
+                                const side = (Math.random()-0.5)*35;
+                                h.position.x = side;
+                                h.position.y = 25;
+                            }
+                        }
+                        // Check collision with hazards (Manual Box check)
+                        let hSizeX = 15; let hSizeY = 100; // Large for towers
+                        if (h.children.length > 2 && h.children[0].geometry.type === 'BoxGeometry') {
+                            // Floating Advert
+                            hSizeX = 12; hSizeY = 8;
+                        }
+                        const hMinX = h.position.x - hSizeX; const hMaxX = h.position.x + hSizeX;
+                        const hMinY = h.position.y - hSizeY; const hMaxY = h.position.y + hSizeY;
+                        const hMinZ = h.position.z - 1;     const hMaxZ = h.position.z + 1;
+                        
+                        if (playerBox.min.x < hMaxX && playerBox.max.x > hMinX &&
+                            playerBox.min.y < hMaxY && playerBox.max.y > hMinY &&
+                            playerBox.min.z < hMaxZ && playerBox.max.z > hMinZ) {
+                            triggerWasted();
+                        }
+                    });
+                }
+
                 // --- AIRCRAFT ANIMATIONS ---
-                if (playerMesh.userData.mainRotor) {
-                    playerMesh.userData.mainRotor.rotation.y += 0.5;
-                }
-                if (playerMesh.userData.rearRotor) {
-                    playerMesh.userData.rearRotor.rotation.x += 0.5;
-                }
-                if (playerMesh.userData.propeller) {
-                    playerMesh.userData.propeller.rotation.z += 0.5;
-                }
+                if (playerMesh.userData.mainRotor) playerMesh.userData.mainRotor.rotation.y += 0.5;
+                if (playerMesh.userData.rearRotor) playerMesh.userData.rearRotor.rotation.x += 0.5;
+                if (playerMesh.userData.propeller) playerMesh.userData.propeller.rotation.z += 0.5;
+                if (playerMesh.userData.rotors) playerMesh.userData.rotors.forEach(r => r.rotation.y += 0.5);
+                if (playerMesh.userData.propellers) playerMesh.userData.propellers.forEach(p => p.rotation.z += 0.5);
 
                 // --- COIN LOGIC ---
                 coins.forEach((coin, i) => {
                     coin.rotation.z += 0.05; // Spin coin
                     
                     if (!isDeadLoop) {
-                        coinBoxes[i].setFromObject(coin);
+                        // MANUAL BOX UPDATE (FASTER)
+                        coinBoxes[i].min.set(coin.position.x - 1, coin.position.y - 1, coin.position.z - 1);
+                        coinBoxes[i].max.set(coin.position.x + 1, coin.position.y + 1, coin.position.z + 1);
+                        
                         if (playerBox.intersectsBox(coinBoxes[i])) {
                             // Collect coin
                             coinsCount++;
@@ -1819,15 +2068,27 @@
                             
                             // Move far ahead to "recycle" immediately
                             coin.position.z = player.position.z + 600 + Math.random() * 400;
-                            const lanes = [-11, -4, 4, 11];
+                            const lanes = [-14, -5, 5, 14];
                             coin.position.x = lanes[Math.floor(Math.random() * lanes.length)];
+                            const isAir = AIR_MODELS.includes(playerModelType);
+                            if (isAir) {
+                                coin.position.y = 25;
+                            } else {
+                                coin.position.y = 0.8;
+                            }
                         }
 
                         // Respawn if behind
                         if (coin.position.z < player.position.z - 50) {
                             coin.position.z = player.position.z + 600 + Math.random() * 400;
-                            const lanes = [-11, -4, 4, 11];
+                            const lanes = [-14, -5, 5, 14];
                             coin.position.x = lanes[Math.floor(Math.random() * lanes.length)];
+                            const isAir = AIR_MODELS.includes(playerModelType);
+                            if (isAir) {
+                                coin.position.y = 25;
+                            } else {
+                                coin.position.y = 0.8;
+                            }
                         }
                     }
                 });
@@ -1871,6 +2132,13 @@
                 centerLine.position.z = player.position.z;
                 leftLine.position.z = player.position.z;
                 rightLine.position.z = player.position.z;
+
+                // Recycle Sky Reflectors
+                skyReflectors.forEach(refl => {
+                    if (refl.position.z < player.position.z - 50) {
+                        refl.position.z += 2000;
+                    }
+                });
 
                 if (!isDeadLoop) {
                     document.getElementById('score').innerText = Math.floor(player.position.z / 10);
@@ -2001,6 +2269,8 @@
             openGarageBtn.addEventListener('click', () => {
                 document.getElementById('menu-view-main').style.display = 'none';
                 document.getElementById('menu-view-garage').style.display = 'flex';
+                document.getElementById('garage-category-selection').style.display = 'flex';
+                document.getElementById('garage-vehicle-picker').style.display = 'none';
             });
         }
 
