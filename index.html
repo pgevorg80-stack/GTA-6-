@@ -802,17 +802,56 @@
                 group.add(band);
             }
 
-            // Billboards - ROTATED TO FACE THE ROAD
+            // Billboards - DECORATED NEON SIGNS
             if (Math.random() > 0.5) {
                 const tex = bbTextures[Math.floor(Math.random() * bbTextures.length)];
                 const bbMat = bendMat(new THREE.MeshBasicMaterial({ map: tex }));
-                const bbWidth = 15;
-                const bbHeight = 8;
-                const bb = new THREE.Mesh(new THREE.BoxGeometry(0.5, bbHeight, bbWidth), bbMat);
+                const bbWidth = 20; 
+                const bbHeight = 10;
                 
-                // Position billboard on the side face of the building facing the road
-                bb.position.set(isLeft ? width/2 + 0.1 : -width/2 - 0.1, -height/2 + 12, 0);
-                group.add(bb);
+                const signGroup = new THREE.Group();
+                
+                // The main sign face
+                const bb = new THREE.Mesh(new THREE.BoxGeometry(0.5, bbHeight, bbWidth), bbMat);
+                signGroup.add(bb);
+                
+                // Neon Frame (matches building stripe color)
+                const frameMat = bendMat(new THREE.MeshBasicMaterial({ color: stripeColor }));
+                const frameThick = 0.5;
+                
+                // Top/Bottom frames
+                const frameTBGeo = new THREE.BoxGeometry(0.8, frameThick, bbWidth + frameThick);
+                const fTop = new THREE.Mesh(frameTBGeo, frameMat);
+                fTop.position.y = bbHeight/2 + frameThick/2;
+                signGroup.add(fTop);
+                
+                const fBot = new THREE.Mesh(frameTBGeo, frameMat);
+                fBot.position.y = -bbHeight/2 - frameThick/2;
+                signGroup.add(fBot);
+                
+                // Side frames
+                const frameSidesGeo = new THREE.BoxGeometry(0.8, bbHeight + frameThick*2, frameThick);
+                const fLeft = new THREE.Mesh(frameSidesGeo, frameMat);
+                fLeft.position.z = bbWidth/2 + frameThick/2;
+                signGroup.add(fLeft);
+                
+                const fRight = new THREE.Mesh(frameSidesGeo, frameMat);
+                fRight.position.z = -bbWidth/2 - frameThick/2;
+                signGroup.add(fRight);
+
+                // Support Arms
+                const armGeo = new THREE.BoxGeometry(2, 0.4, 0.4);
+                const armMat = bendMat(new THREE.MeshStandardMaterial({ color: 0x333333 }));
+                const arm1 = new THREE.Mesh(armGeo, armMat);
+                arm1.position.set(isLeft ? -1 : 1, 3, 0);
+                signGroup.add(arm1);
+                const arm2 = new THREE.Mesh(armGeo, armMat);
+                arm2.position.set(isLeft ? -1 : 1, -3, 0);
+                signGroup.add(arm2);
+
+                // Position the sign group on the building face
+                signGroup.position.set(isLeft ? width/2 + 1.2 : -width/2 - 1.2, -height/2 + 15 + Math.random() * 20, 0);
+                group.add(signGroup);
             }
 
             group.position.y = height / 2;
