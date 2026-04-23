@@ -836,16 +836,16 @@
         const leftLine = createLine(17, 0xff00ff, 0.6); // Left Edge
         const rightLine = createLine(-17, 0xff00ff, 0.6); // Right Edge
 
-        // --- SIDEWALKS (OPTIMIZED) ---
-        const swGeo = new THREE.PlaneGeometry(60, 2000);
-        const swMat = bendMat(new THREE.MeshBasicMaterial({ color: 0x050505 }));
+        // --- SIDEWALKS (OPTIMIZED & BENDING) ---
+        const swGeo = new THREE.PlaneGeometry(60, 2000, 1, 100); // Added segments to allow bending
+        const swMat = bendMat(new THREE.MeshBasicMaterial({ color: 0x111111 }));
         const swL = new THREE.Mesh(swGeo, swMat);
         swL.rotation.x = -Math.PI / 2;
-        swL.position.set(50, -0.5, 0); // Deeper to prevent Z-fighting
+        swL.position.set(50, 0.01, 0); // Positioned slightly above ground
         scene.add(swL);
         const swR = new THREE.Mesh(swGeo, swMat);
         swR.rotation.x = -Math.PI / 2;
-        swR.position.set(-50, -0.5, 0);
+        swR.position.set(-50, 0.01, 0);
         scene.add(swR);
 
         // --- DISTANT CITY LIGHTS (OPTIMIZED POINTS) ---
