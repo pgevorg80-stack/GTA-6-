@@ -746,7 +746,12 @@
             group.add(rightSupport);
 
             // The banner itself
-            const tex = bbTextures[Math.floor(Math.random() * bbTextures.length)];
+            const baseTex = bbTextures[Math.floor(Math.random() * bbTextures.length)];
+            const tex = baseTex.clone();
+            tex.wrapS = THREE.RepeatWrapping;
+            tex.repeat.set(6, 1); // Repeat 6 times across the wide banner
+            tex.needsUpdate = true;
+
             const bannerMat = bendMat(new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide }));
             const banner = new THREE.Mesh(bannerGeo, bannerMat);
             banner.position.y = 18;
