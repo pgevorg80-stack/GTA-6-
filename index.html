@@ -630,7 +630,7 @@
         // --- SCENE SETUP ---
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x020008);
-        scene.fog = new THREE.FogExp2(0x020008, 0.012);
+        scene.fog = new THREE.FogExp2(0x020008, 0.008); // Reduced fog for better visibility
 
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1500);
         const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: "high-performance" });
@@ -656,7 +656,7 @@
         }
 
         // --- WORLD LIGHTS ---
-        scene.add(new THREE.AmbientLight(0xffffff, 0.2));
+        scene.add(new THREE.AmbientLight(0xffffff, 0.35)); // Slightly brighter ambient light
 
         const moon = new THREE.DirectionalLight(0xaaaaff, 1.0);
         moon.position.set(20, 40, 20);
@@ -720,8 +720,55 @@
             createNeonTexture('VICE CARS', '#00ffff', '#ffffff'),
             createNeonTexture('NEON GULP', '#ff00ff', '#ffffff'),
             createNeonTexture('GLOW CO.', '#00ff00', '#ffffff'),
-            createNeonTexture('CYBER TECH', '#ffff00', '#ffffff')
+            createNeonTexture('CYBER TECH', '#ffff00', '#ffffff'),
+            createNeonTexture('DRIVE FAST', '#ff0000', '#ffffff'),
+            createNeonTexture('NEON CITY', '#ff00ff', '#ffffff'),
+            createNeonTexture('REACH TOP', '#00ffff', '#ffffff')
         ];
+
+        // --- OVERHEAD BANNERS ---
+        const banners = [];
+        const bannerGeo = new THREE.BoxGeometry(45, 1.5, 0.5);
+
+        function createOverheadBanner(zPos) {
+            const group = new THREE.Group();
+
+            // The arch/support
+            const supportGeo = new THREE.BoxGeometry(0.8, 20, 0.8);
+            const supportMat = bendMat(new THREE.MeshStandardMaterial({ color: 0x222222 }));
+            
+            const leftSupport = new THREE.Mesh(supportGeo, supportMat);
+            leftSupport.position.set(-22, 10, 0);
+            group.add(leftSupport);
+
+            const rightSupport = new THREE.Mesh(supportGeo, supportMat);
+            rightSupport.position.set(22, 10, 0);
+            group.add(rightSupport);
+
+            // The banner itself
+            const tex = bbTextures[Math.floor(Math.random() * bbTextures.length)];
+            const bannerMat = bendMat(new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide }));
+            const banner = new THREE.Mesh(bannerGeo, bannerMat);
+            banner.position.y = 18;
+            group.add(banner);
+
+            // Neon strips on supports
+            const neonMat = bendMat(new THREE.MeshBasicMaterial({ color: 0x00ffff }));
+            const neonL = new THREE.Mesh(new THREE.BoxGeometry(0.9, 15, 0.9), neonMat);
+            neonL.position.set(-22, 10, 0);
+            group.add(neonL);
+            const neonR = new THREE.Mesh(new THREE.BoxGeometry(0.9, 15, 0.9), neonMat);
+            neonR.position.set(22, 10, 0);
+            group.add(neonR);
+
+            group.position.z = zPos;
+            scene.add(group);
+            banners.push(group);
+        }
+
+        for (let i = 0; i < 5; i++) {
+            createOverheadBanner(400 + i * 400);
+        }
 
         function createBuilding(zPos) {
             const group = new THREE.Group();
@@ -738,7 +785,7 @@
             group.add(baseMesh);
 
             // Neon Stripes (Windows)
-            const stripeColors = [0x00ffff, 0xff00ff]; // Cyan and Pink
+            const stripeColors = [0x00ffff, 0xff00ff, 0xffff00, 0x00ff00, 0xff8800, 0x8800ff, 0xff0055]; 
             const stripeColor = stripeColors[Math.floor(Math.random() * stripeColors.length)];
             const winMat = bendMat(new THREE.MeshBasicMaterial({ color: stripeColor }));
             
@@ -847,6 +894,26 @@
         swR.rotation.x = -Math.PI / 2;
         swR.position.set(-50, 0.01, 0);
         scene.add(swR);
+
+        // --- ROAD REFLECTORS (CAT'S EYES) ---
+        const reflectors = [];
+        const reflGeo = new THREE.SphereGeometry(0.15, 8, 8);
+        const reflMatY = bendMat(new THREE.MeshBasicMaterial({ color: 0xffff00 }));
+        const reflMatP = bendMat(new THREE.MeshBasicMaterial({ color: 0xff00ff }));
+
+        function createReflector(x, z, mat) {
+            const mesh = new THREE.Mesh(reflGeo, mat);
+            mesh.position.set(x, 0.2, z);
+            scene.add(mesh);
+            reflectors.push(mesh);
+        }
+
+        for (let i = 0; i < 50; i++) {
+            const z = i * 40;
+            createReflector(0, z, reflMatY); // Center
+            createReflector(17, z, reflMatP); // Left
+            createReflector(-17, z, reflMatP); // Right
+        }
 
         // --- DISTANT CITY LIGHTS (OPTIMIZED POINTS) ---
         const clCount = 200;
@@ -1372,13 +1439,13 @@
         const coinBoxes = [];
         const coinGeo = new THREE.CylinderGeometry(0.8, 0.8, 0.2, 16);
         coinGeo.rotateX(Math.PI / 2);
-        const coinMat = new THREE.MeshStandardMaterial({ 
+        const coinMat = bendMat(new THREE.MeshStandardMaterial({ 
             color: 0xffff00, 
             emissive: 0xffaa00, 
             emissiveIntensity: 2,
             metalness: 1,
             roughness: 0.2
-        });
+        }));
 
         function createCoin(zPos) {
             const coin = new THREE.Mesh(coinGeo, coinMat);
@@ -1615,6 +1682,18 @@
                             sl.position.z += 1000;
                         }
                     });
+
+                    banners.forEach(b => {
+                        if (b.position.z < player.position.z - 100) {
+                            b.position.z += 2000;
+                        }
+                    });
+
+                    reflectors.forEach(r => {
+                        if (r.position.z < player.position.z - 50) {
+                            r.position.z += 2000;
+                        }
+                    });
                 }
 
                 if (!isDeadLoop && Math.abs(player.position.x) > 16) triggerWasted();
@@ -1725,6 +1804,17 @@
                 // Reset buildings
                 buildings.forEach((b, i) => {
                     b.position.z = 100 + i * 35;
+                });
+
+                // Reset banners
+                banners.forEach((b, i) => {
+                    b.position.z = 400 + i * 400;
+                });
+
+                // Reset reflectors
+                reflectors.forEach((r, i) => {
+                    const groupIndex = Math.floor(i / 3);
+                    r.position.z = groupIndex * 40;
                 });
                 
                 // Reset UI
