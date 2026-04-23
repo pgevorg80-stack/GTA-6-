@@ -646,10 +646,10 @@
         const useBloom = true;
         if (useBloom) {
             const renderScene = new RenderPass(scene, camera);
-            const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
-            bloomPass.threshold = isMobile ? 0.6 : 0.5;
-            bloomPass.strength = isMobile ? 0.8 : 1.2;
-            bloomPass.radius = isMobile ? 0.2 : 0.3;
+            const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.0, 0.4, 0.85);
+            bloomPass.threshold = isMobile ? 0.7 : 0.6;
+            bloomPass.strength = isMobile ? 0.6 : 1.0;
+            bloomPass.radius = isMobile ? 0.1 : 0.2;
             composer = new EffectComposer(renderer);
             composer.addPass(renderScene);
             composer.addPass(bloomPass);
@@ -676,61 +676,95 @@
         const hemiLight = new THREE.HemisphereLight(0xff00ff, 0x00ffff, 0.3);
         scene.add(hemiLight);
 
-        // --- CITY BUILDINGS (SYNTHWAVE WIREFRAMES) ---
+        // --- CITY BUILDINGS (OPTIMIZED) ---
         const buildings = [];
         const buildingGeo = new THREE.BoxGeometry(1, 1, 1);
-        const edgeGeo = new THREE.EdgesGeometry(buildingGeo);
+        
+        // --- PROCEDURAL NEON TEXTURES ---
+        function createNeonTexture(name, color1, color2) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 256;
+            const ctx = canvas.getContext('2d');
 
-        const edgeColors = [0x00ffff, 0xff00ff, 0x00ff00, 0xffff00];
+            // Background
+            ctx.fillStyle = '#050505';
+            ctx.fillRect(0, 0, 512, 256);
+
+            // Border
+            ctx.strokeStyle = color1;
+            ctx.lineWidth = 10;
+            ctx.strokeRect(20, 20, 472, 216);
+
+            // Glow effect
+            ctx.shadowBlur = 20;
+            ctx.shadowColor = color1;
+
+            // Text
+            ctx.fillStyle = color2;
+            ctx.font = 'bold 80px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(name, 256, 128);
+
+            // Subtext
+            ctx.font = '20px Arial';
+            ctx.fillStyle = color1;
+            ctx.fillText('CITY OF NEON', 256, 200);
+
+            const tex = new THREE.CanvasTexture(canvas);
+            return tex;
+        }
+
+        const bbTextures = [
+            createNeonTexture('VICE CARS', '#00ffff', '#ffffff'),
+            createNeonTexture('NEON GULP', '#ff00ff', '#ffffff'),
+            createNeonTexture('GLOW CO.', '#00ff00', '#ffffff'),
+            createNeonTexture('CYBER TECH', '#ffff00', '#ffffff')
+        ];
 
         function createBuilding(zPos) {
             const group = new THREE.Group();
 
             const isLeft = Math.random() > 0.5;
-            const width = 15 + Math.random() * 25;
-            const height = 60 + Math.random() * 180;
-            const depth = 15 + Math.random() * 30;
+            const width = 10 + Math.random() * 15; // Thinner
+            const height = 40 + Math.random() * 100; // Slightly shorter
+            const depth = 10 + Math.random() * 15; // Thinner
 
             // Solid dark base
-            const baseMat = bendMat(new THREE.MeshStandardMaterial({ color: 0x010101, roughness: 0.9 }));
+            const baseMat = bendMat(new THREE.MeshStandardMaterial({ color: 0x050505, roughness: 0.9 }));
             const baseMesh = new THREE.Mesh(buildingGeo, baseMat);
             baseMesh.scale.set(width, height, depth);
             group.add(baseMesh);
 
-            // Window bands (More efficient than individual windows)
-            const winColor = new THREE.Color().setHSL(Math.random() * 0.1 + 0.5, 0.9, 0.6);
-            const winMat = bendMat(new THREE.MeshBasicMaterial({ color: winColor }));
+            // Neon Stripes (Windows)
+            const stripeColors = [0x00ffff, 0xff00ff]; // Cyan and Pink
+            const stripeColor = stripeColors[Math.floor(Math.random() * stripeColors.length)];
+            const winMat = bendMat(new THREE.MeshBasicMaterial({ color: stripeColor }));
             
-            const floorCount = Math.floor(height / 12);
+            const floorCount = Math.max(2, Math.floor(height / 20)); // At least 2 stripes
             for (let i = 0; i < floorCount; i++) {
-                if (Math.random() > 0.4) {
-                    const bandGeo = new THREE.BoxGeometry(width + 0.2, 1.5, depth + 0.2);
-                    const band = new THREE.Mesh(bandGeo, winMat);
-                    band.position.y = (i * 12) - (height / 2) + 6;
-                    group.add(band);
-                }
+                const bandGeo = new THREE.BoxGeometry(width + 0.3, 1.2, depth + 0.3);
+                const band = new THREE.Mesh(bandGeo, winMat);
+                band.position.y = (i * 20) - (height / 2) + 10;
+                group.add(band);
             }
 
-            // Neon Accents / Signs
+            // Billboards - ROTATED TO FACE THE ROAD
             if (Math.random() > 0.5) {
-                const accentColor = edgeColors[Math.floor(Math.random() * edgeColors.length)];
-                const accentMat = bendMat(new THREE.MeshBasicMaterial({ color: accentColor }));
+                const tex = bbTextures[Math.floor(Math.random() * bbTextures.length)];
+                const bbMat = bendMat(new THREE.MeshBasicMaterial({ map: tex }));
+                const bbWidth = 15;
+                const bbHeight = 8;
+                const bb = new THREE.Mesh(new THREE.BoxGeometry(0.5, bbHeight, bbWidth), bbMat);
                 
-                // Vertical strip
-                const strip = new THREE.Mesh(new THREE.BoxGeometry(1, height, 1), accentMat);
-                strip.position.set(isLeft ? width/2 : -width/2, 0, depth/2);
-                group.add(strip);
-                
-                // Big Billboard Sign
-                if (Math.random() > 0.7) {
-                    const sign = new THREE.Mesh(new THREE.BoxGeometry(width * 0.8, 10, 2), accentMat);
-                    sign.position.set(0, height * 0.3, depth/2 + 1);
-                    group.add(sign);
-                }
+                // Position billboard on the side face of the building facing the road
+                bb.position.set(isLeft ? width/2 + 0.1 : -width/2 - 0.1, -height/2 + 12, 0);
+                group.add(bb);
             }
 
             group.position.y = height / 2;
-            group.position.x = isLeft ? -35 - Math.random() * 30 : 35 + Math.random() * 30;
+            group.position.x = isLeft ? -25 - Math.random() * 15 : 25 + Math.random() * 15;
             group.position.z = zPos;
 
             scene.add(group);
@@ -799,26 +833,76 @@
             return line;
         };
         const centerLine = createLine(0, 0xffff00, 0.4); // Center Yellow
-        const leftLine = createLine(15, 0xff00ff, 0.5); // Left Edge
-        const rightLine = createLine(-15, 0xff00ff, 0.5); // Right Edge
+        const leftLine = createLine(17, 0xff00ff, 0.6); // Left Edge
+        const rightLine = createLine(-17, 0xff00ff, 0.6); // Right Edge
+
+        // --- SIDEWALKS (OPTIMIZED) ---
+        const swGeo = new THREE.PlaneGeometry(60, 2000);
+        const swMat = bendMat(new THREE.MeshBasicMaterial({ color: 0x050505 }));
+        const swL = new THREE.Mesh(swGeo, swMat);
+        swL.rotation.x = -Math.PI / 2;
+        swL.position.set(50, -0.5, 0); // Deeper to prevent Z-fighting
+        scene.add(swL);
+        const swR = new THREE.Mesh(swGeo, swMat);
+        swR.rotation.x = -Math.PI / 2;
+        swR.position.set(-50, -0.5, 0);
+        scene.add(swR);
+
+        // --- DISTANT CITY LIGHTS (OPTIMIZED POINTS) ---
+        const clCount = 200;
+        const clPositions = new Float32Array(clCount * 3);
+        const clColors = new Float32Array(clCount * 3);
+        const clColor = new THREE.Color(0xffffaa);
+        
+        for (let i = 0; i < clCount; i++) {
+            const side = Math.random() > 0.5 ? 1 : -1;
+            clPositions[i * 3] = side * (150 + Math.random() * 300);
+            clPositions[i * 3 + 1] = 20 + Math.random() * 150;
+            clPositions[i * 3 + 2] = Math.random() * 2000;
+            clColors[i * 3] = clColor.r;
+            clColors[i * 3 + 1] = clColor.g;
+            clColors[i * 3 + 2] = clColor.b;
+        }
+        
+        const clGeo = new THREE.BufferGeometry();
+        clGeo.setAttribute('position', new THREE.BufferAttribute(clPositions, 3));
+        clGeo.setAttribute('color', new THREE.BufferAttribute(clColors, 3));
+        const clMat = new THREE.PointsMaterial({ size: 1.5, vertexColors: true, transparent: true, opacity: 0.8 });
+        const distantLights = new THREE.Points(clGeo, clMat);
+        scene.add(distantLights);
 
         // --- PROCEDURAL CAR GENERATOR ---
-        function createCarMesh(type, colorHex) {
+        function createCarMesh(type, colorHex, simplified = false) {
             const group = new THREE.Group();
 
-            const bodyMat = bendMat(new THREE.MeshStandardMaterial({ color: colorHex, roughness: 0.3, metalness: 0.8 }));
-            const glassMat = bendMat(new THREE.MeshStandardMaterial({ color: 0x050505, roughness: 0.1, metalness: 0.9 }));
-            const wheelMat = bendMat(new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.9, metalness: 0.1 }));
+            const bodyMat = bendMat(new THREE.MeshStandardMaterial({ color: colorHex, roughness: 0.2, metalness: 0.9 }));
+            const glassMat = bendMat(new THREE.MeshStandardMaterial({ color: 0x050505, roughness: 0.05, metalness: 1.0 }));
+            const wheelMat = bendMat(new THREE.MeshStandardMaterial({ color: 0x0a0a0a, roughness: 0.8, metalness: 0.2 }));
+            const rimMat = bendMat(new THREE.MeshStandardMaterial({ color: 0xbbbbbb, roughness: 0.1, metalness: 1.0 }));
+            const detailMat = bendMat(new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.5, metalness: 0.5 }));
 
-            const wheelGeom = new THREE.CylinderGeometry(0.35, 0.35, 0.25, 16);
+            const wheelGeom = new THREE.CylinderGeometry(0.35, 0.35, 0.25, simplified ? 8 : 16);
             wheelGeom.rotateZ(Math.PI / 2);
+            const rimGeom = new THREE.CylinderGeometry(0.22, 0.22, 0.27, 8);
+            rimGeom.rotateZ(Math.PI / 2);
 
             function addWheel(x, y, z, scale = 1) {
+                if (simplified) {
+                    const wheel = new THREE.Mesh(wheelGeom, wheelMat);
+                    wheel.position.set(x, y, z);
+                    wheel.scale.set(scale, scale, scale);
+                    group.add(wheel);
+                    return;
+                }
+                const wheelGroup = new THREE.Group();
                 const wheel = new THREE.Mesh(wheelGeom, wheelMat);
-                wheel.position.set(x, y, z);
-                wheel.scale.set(scale, scale, scale);
                 wheel.castShadow = true;
-                group.add(wheel);
+                wheelGroup.add(wheel);
+                const rim = new THREE.Mesh(rimGeom, rimMat);
+                wheelGroup.add(rim);
+                wheelGroup.position.set(x, y, z);
+                wheelGroup.scale.set(scale, scale, scale);
+                group.add(wheelGroup);
             }
 
             function addBox(w, h, d, y, z, mat, shadow = true) {
@@ -830,23 +914,41 @@
                 return mesh;
             }
 
+            function addDetail(w, h, d, x, y, z, mat) {
+                if (simplified) return;
+                const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+                mesh.position.set(x, y, z);
+                mesh.castShadow = true;
+                group.add(mesh);
+                return mesh;
+            }
+
             function addLight(x, y, z, color, w=0.3, h=0.1) {
                 const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.1), bendMat(new THREE.MeshBasicMaterial({ color: color })));
                 mesh.position.set(x, y, z);
                 group.add(mesh);
             }
 
+            function addMirror(x, y, z) {
+                if (simplified) return;
+                const mirror = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.15, 0.2), bodyMat);
+                mirror.position.set(x, y, z);
+                group.add(mirror);
+            }
+
             if (type === 'sports') {
                 addBox(1.8, 0.4, 3.6, 0.3, 0, bodyMat);
                 addBox(1.5, 0.4, 1.4, 0.65, 0.1, glassMat);
                 addBox(1.9, 0.05, 0.6, 0.8, -1.6, bodyMat); // wing
-                addLight(0.6, 0.35, 1.8, 0xffffff); addLight(-0.6, 0.35, 1.8, 0xffffff); // headlights
-                addLight(0.6, 0.35, -1.8, 0xff0000, 0.5); addLight(-0.6, 0.35, -1.8, 0xff0000, 0.5); // taillights
+                addMirror(0.95, 0.6, 0.8); addMirror(-0.95, 0.6, 0.8);
+                addLight(0.6, 0.35, 1.8, 0xffffff); addLight(-0.6, 0.35, 1.8, 0xffffff);
+                addLight(0.6, 0.35, -1.8, 0xff0000, 0.5); addLight(-0.6, 0.35, -1.8, 0xff0000, 0.5);
                 addWheel(0.95, 0.35, 1.2); addWheel(-0.95, 0.35, 1.2);
                 addWheel(0.95, 0.35, -1.2); addWheel(-0.95, 0.35, -1.2);
             } else if (type === 'sedan') {
                 addBox(1.7, 0.6, 3.4, 0.4, 0, bodyMat);
                 addBox(1.5, 0.5, 1.8, 0.9, -0.1, glassMat);
+                addMirror(0.9, 0.7, 0.6); addMirror(-0.9, 0.7, 0.6);
                 addLight(0.6, 0.4, 1.7, 0xffffff); addLight(-0.6, 0.4, 1.7, 0xffffff);
                 addLight(0.6, 0.4, -1.7, 0xff0000); addLight(-0.6, 0.4, -1.7, 0xff0000);
                 addWheel(0.85, 0.35, 1.0); addWheel(-0.85, 0.35, 1.0);
@@ -854,7 +956,8 @@
             } else if (type === 'truck') {
                 addBox(2.0, 1.0, 4.0, 0.6, 0, bodyMat);
                 addBox(1.8, 0.8, 1.6, 1.4, 0.8, glassMat);
-                addBox(1.8, 0.4, 2.0, 1.0, -1.0, bendMat(new THREE.MeshStandardMaterial({ color: 0x111111 })));
+                addBox(1.8, 0.4, 2.0, 1.0, -1.0, detailMat);
+                addMirror(1.1, 1.2, 1.2); addMirror(-1.1, 1.2, 1.2);
                 addLight(0.7, 0.6, 2.0, 0xffffff, 0.4, 0.2); addLight(-0.7, 0.6, 2.0, 0xffffff, 0.4, 0.2);
                 addLight(0.7, 0.6, -2.0, 0xff0000, 0.4, 0.2); addLight(-0.7, 0.6, -2.0, 0xff0000, 0.4, 0.2);
                 addWheel(1.1, 0.45, 1.4, 1.4); addWheel(-1.1, 0.45, 1.4, 1.4);
@@ -862,6 +965,7 @@
             } else if (type === 'coupe') {
                 addBox(1.7, 0.5, 3.2, 0.35, 0, bodyMat);
                 addBox(1.4, 0.4, 1.2, 0.75, 0.2, glassMat);
+                addMirror(0.9, 0.65, 0.5); addMirror(-0.9, 0.65, 0.5);
                 addLight(0.6, 0.35, 1.6, 0xffffff); addLight(-0.6, 0.35, 1.6, 0xffffff);
                 addLight(0.6, 0.35, -1.6, 0xff0000); addLight(-0.6, 0.35, -1.6, 0xff0000);
                 addWheel(0.9, 0.35, 1.0); addWheel(-0.9, 0.35, 1.0);
@@ -869,6 +973,7 @@
             } else if (type === 'suv') {
                 addBox(1.9, 0.9, 3.8, 0.5, 0, bodyMat);
                 addBox(1.7, 0.6, 2.2, 1.2, -0.3, glassMat);
+                addMirror(1.05, 1.0, 0.6); addMirror(-1.05, 1.0, 0.6);
                 addLight(0.7, 0.5, 1.9, 0xffffff, 0.4, 0.2); addLight(-0.7, 0.5, 1.9, 0xffffff, 0.4, 0.2);
                 addLight(0.7, 0.5, -1.9, 0xff0000, 0.4, 0.2); addLight(-0.7, 0.5, -1.9, 0xff0000, 0.4, 0.2);
                 addWheel(1.0, 0.45, 1.2, 1.2); addWheel(-1.0, 0.45, 1.2, 1.2);
@@ -876,24 +981,32 @@
             } else if (type === 'van') {
                 addBox(1.9, 1.3, 4.0, 0.7, 0, bodyMat);
                 addBox(1.7, 0.5, 1.0, 1.5, 1.2, glassMat);
+                addMirror(1.05, 1.3, 1.5); addMirror(-1.05, 1.3, 1.5);
                 addLight(0.7, 0.6, 2.0, 0xffffff, 0.4, 0.3); addLight(-0.7, 0.6, 2.0, 0xffffff, 0.4, 0.3);
                 addLight(0.7, 0.6, -2.0, 0xff0000, 0.5, 0.2); addLight(-0.7, 0.6, -2.0, 0xff0000, 0.5, 0.2);
                 addWheel(1.0, 0.35, 1.3); addWheel(-1.0, 0.35, 1.3);
                 addWheel(1.0, 0.35, -1.3); addWheel(-1.0, 0.35, -1.3);
             } else if (type === 'hypercar') {
-                addBox(2.1, 0.35, 3.8, 0.25, 0, bodyMat);
-                addBox(1.5, 0.3, 1.4, 0.55, 0.2, glassMat);
-                addBox(2.1, 0.05, 0.7, 0.7, -1.7, bodyMat); // massive wing
-                addBox(2.1, 0.1, 0.4, 0.2, 1.8, bodyMat); // front splitter
-                addLight(0.8, 0.25, 1.9, 0x00ffff, 0.5, 0.1); addLight(-0.8, 0.25, 1.9, 0x00ffff, 0.5, 0.1); // cyan lights
-                addLight(0.8, 0.25, -1.9, 0xff00ff, 0.8, 0.05); addLight(-0.8, 0.25, -1.9, 0xff00ff, 0.8, 0.05); // pink strip
-                addWheel(1.1, 0.35, 1.4, 1.1); addWheel(-1.1, 0.35, 1.4, 1.1);
-                addWheel(1.1, 0.4, -1.4, 1.2); addWheel(-1.1, 0.4, -1.4, 1.2);
+                // High-fidelity hypercar
+                addBox(2.2, 0.3, 4.2, 0.2, 0, bodyMat);
+                addBox(1.4, 0.3, 1.6, 0.5, 0.2, glassMat);
+                // Aerodynamics
+                addDetail(2.2, 0.05, 0.8, 0, 0.8, -1.8, bodyMat); // Main Wing
+                addDetail(1.8, 0.05, 0.6, 0, 0.9, -1.9, bodyMat); // Double Wing
+                addDetail(2.2, 0.1, 0.5, 0, 0.15, 2.1, detailMat); // Aggressive Splitter
+                addDetail(0.4, 0.6, 0.8, 0.9, 0.4, -0.2, detailMat); // Side intakes
+                addDetail(0.4, 0.6, 0.8, -0.9, 0.4, -0.2, detailMat);
+                addMirror(1.1, 0.5, 0.6); addMirror(-1.1, 0.5, 0.6);
+                addLight(0.8, 0.2, 2.0, 0x00ffff, 0.6, 0.05); addLight(-0.8, 0.2, 2.0, 0x00ffff, 0.6, 0.05); // Cyan LED
+                addLight(0, 0.25, -2.1, 0xff00ff, 2.0, 0.05); // Pink light bar back
+                addWheel(1.1, 0.35, 1.5, 1.1); addWheel(-1.1, 0.35, 1.5, 1.1);
+                addWheel(1.1, 0.4, -1.5, 1.3); addWheel(-1.1, 0.4, -1.5, 1.3);
             } else if (type === 'police') {
                 addBox(1.7, 0.6, 3.4, 0.4, 0, bodyMat);
                 addBox(1.5, 0.5, 1.8, 0.9, -0.1, glassMat);
                 const sL = addBox(0.4, 0.15, 0.2, 1.2, -0.1, bendMat(new THREE.MeshBasicMaterial({color: 0xff0000}))); sL.position.x = 0.35;
                 const sR = addBox(0.4, 0.15, 0.2, 1.2, -0.1, bendMat(new THREE.MeshBasicMaterial({color: 0x0000ff}))); sR.position.x = -0.35;
+                addMirror(0.9, 0.7, 0.6); addMirror(-0.9, 0.7, 0.6);
                 addLight(0.6, 0.4, 1.7, 0xffffff); addLight(-0.6, 0.4, 1.7, 0xffffff);
                 addLight(0.6, 0.4, -1.7, 0xff0000); addLight(-0.6, 0.4, -1.7, 0xff0000);
                 addWheel(0.9, 0.35, 1.0); addWheel(-0.9, 0.35, 1.0);
@@ -902,47 +1015,61 @@
                 addBox(1.7, 0.6, 3.4, 0.4, 0, bodyMat);
                 addBox(1.5, 0.5, 1.8, 0.9, -0.1, glassMat);
                 addBox(0.7, 0.2, 0.4, 1.2, -0.1, bendMat(new THREE.MeshBasicMaterial({color: 0xffaa00})));
+                addMirror(0.9, 0.7, 0.6); addMirror(-0.9, 0.7, 0.6);
                 addLight(0.6, 0.4, 1.7, 0xffffff); addLight(-0.6, 0.4, 1.7, 0xffffff);
                 addLight(0.6, 0.4, -1.7, 0xff0000); addLight(-0.6, 0.4, -1.7, 0xff0000);
                 addWheel(0.9, 0.35, 1.0); addWheel(-0.9, 0.35, 1.0);
                 addWheel(0.9, 0.35, -1.0); addWheel(-0.9, 0.35, -1.0);
             } else if (type === 'muscle') {
-                addBox(1.8, 0.6, 3.6, 0.4, 0, bodyMat);
+                addBox(1.8, 0.6, 3.8, 0.4, 0, bodyMat);
                 addBox(1.4, 0.4, 1.4, 0.85, -0.3, glassMat);
-                addBox(0.8, 0.2, 0.8, 0.8, 1.1, bendMat(new THREE.MeshStandardMaterial({color: 0x333333, metalness: 1}))); // blower
-                addLight(0.7, 0.4, 1.8, 0xffffff, 0.4, 0.2); addLight(-0.7, 0.4, 1.8, 0xffffff, 0.4, 0.2);
-                addLight(0.7, 0.4, -1.8, 0xff0000, 0.6, 0.1); addLight(-0.7, 0.4, -1.8, 0xff0000, 0.6, 0.1);
-                addWheel(1.0, 0.4, 1.2, 1.2); addWheel(-1.0, 0.4, 1.2, 1.2);
-                addWheel(1.0, 0.5, -1.2, 1.4); addWheel(-1.0, 0.5, -1.2, 1.4);
+                addDetail(0.8, 0.4, 0.8, 0, 0.9, 1.1, rimMat); // Big shiny blower
+                addDetail(1.8, 0.1, 0.4, 0, 0.15, 1.9, detailMat); // Front spoiler
+                addMirror(1.0, 0.7, 0.5); addMirror(-1.0, 0.7, 0.5);
+                addLight(0.7, 0.4, 1.9, 0xffffff, 0.4, 0.2); addLight(-0.7, 0.4, 1.9, 0xffffff, 0.4, 0.2);
+                addLight(0.7, 0.4, -1.9, 0xff0000, 0.8, 0.1); addLight(-0.7, 0.4, -1.9, 0xff0000, 0.8, 0.1);
+                addWheel(1.0, 0.4, 1.3, 1.2); addWheel(-1.0, 0.4, 1.3, 1.2);
+                addWheel(1.0, 0.5, -1.3, 1.5); addWheel(-1.0, 0.5, -1.3, 1.5);
             } else if (type === 'limo') {
-                addBox(1.7, 0.6, 5.5, 0.4, 0, bodyMat);
-                addBox(1.5, 0.45, 4.0, 0.85, -0.3, glassMat);
-                addLight(0.6, 0.4, 2.75, 0xffffff); addLight(-0.6, 0.4, 2.75, 0xffffff);
-                addLight(0.6, 0.4, -2.75, 0xff0000); addLight(-0.6, 0.4, -2.75, 0xff0000);
-                addWheel(0.9, 0.35, 2.2); addWheel(-0.9, 0.35, 2.2);
-                addWheel(0.9, 0.35, -2.2); addWheel(-0.9, 0.35, -2.2);
+                addBox(1.7, 0.6, 6.5, 0.4, 0, bodyMat);
+                addBox(1.5, 0.45, 5.0, 0.85, -0.3, glassMat);
+                addMirror(0.9, 0.7, 2.5); addMirror(-0.9, 0.7, 2.5);
+                addLight(0.6, 0.4, 3.2, 0xffffff); addLight(-0.6, 0.4, 3.2, 0xffffff);
+                addLight(0.6, 0.4, -3.2, 0xff0000); addLight(-0.6, 0.4, -3.2, 0xff0000);
+                addWheel(0.9, 0.35, 2.5); addWheel(-0.9, 0.35, 2.5);
+                addWheel(0.9, 0.35, -2.5); addWheel(-0.9, 0.35, -2.5);
             } else if (type === 'f1') {
-                addBox(1.1, 0.3, 4.0, 0.2, 0, bodyMat);
-                addBox(0.7, 0.35, 1.0, 0.45, -0.4, glassMat);
-                addBox(1.8, 0.05, 0.6, 0.3, 1.8, bodyMat); // front wing
-                addBox(1.6, 0.05, 0.6, 0.7, -1.8, bodyMat); // rear wing
-                addLight(0, 0.3, -2.0, 0xff0000, 0.4, 0.4); // flashing rain light
-                addWheel(0.75, 0.35, 1.4, 1.0); addWheel(-0.75, 0.35, 1.4, 1.0);
-                addWheel(0.85, 0.45, -1.4, 1.3); addWheel(-0.85, 0.45, -1.4, 1.3);
+                // High-fidelity F1
+                addBox(0.9, 0.3, 4.2, 0.2, 0, bodyMat); // Cockpit area
+                addBox(0.6, 0.3, 1.0, 0.45, -0.4, glassMat);
+                // F1 Aero
+                addDetail(2.0, 0.05, 0.6, 0, 0.25, 2.0, bodyMat); // Front wing
+                addDetail(2.0, 0.3, 0.05, 1.0, 0.3, 2.0, bodyMat); // Endplate L
+                addDetail(2.0, 0.3, 0.05, -1.0, 0.3, 2.0, bodyMat); // Endplate R
+                addDetail(1.8, 0.05, 0.7, 0, 0.8, -1.9, bodyMat); // Rear wing
+                addDetail(0.1, 0.8, 0.7, 0.9, 0.6, -1.9, bodyMat); // Rear endplate
+                addDetail(0.1, 0.8, 0.7, -0.9, 0.6, -1.9, bodyMat);
+                addDetail(0.5, 0.5, 0.5, 0, 0.6, 0.2, bodyMat); // Airbox
+                addLight(0, 0.3, -2.1, 0xff0000, 0.4, 0.4); 
+                addWheel(0.85, 0.35, 1.4, 1.0); addWheel(-0.85, 0.35, 1.4, 1.0);
+                addWheel(0.95, 0.45, -1.4, 1.3); addWheel(-0.95, 0.45, -1.4, 1.3);
             } else if (type === 'cyber') {
-                addBox(1.9, 0.7, 3.8, 0.4, 0, bodyMat);
-                addBox(1.7, 0.45, 2.0, 0.95, -0.3, glassMat);
-                addLight(0, 0.4, 1.9, 0xffffff, 1.8, 0.05); // light bar front
-                addLight(0, 0.4, -1.9, 0xff0000, 1.8, 0.05); // light bar back
+                addBox(2.0, 0.8, 4.0, 0.4, 0, bodyMat);
+                addBox(1.7, 0.4, 2.2, 1.0, -0.4, glassMat);
+                // Cyber details
+                addLight(0, 0.5, 2.0, 0xffffff, 1.9, 0.08); // Thick front bar
+                addLight(0, 0.5, -2.0, 0xff0000, 1.9, 0.08); // Thick back bar
                 const accentMat = bendMat(new THREE.MeshBasicMaterial({ color: 0x00ffff }));
-                const sL = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.05, 3.8), accentMat); sL.position.set(0.95, 0.4, 0); group.add(sL);
-                const sR = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.05, 3.8), accentMat); sR.position.set(-0.95, 0.4, 0); group.add(sR);
-                addWheel(1.0, 0.4, 1.3, 1.15); addWheel(-1.0, 0.4, 1.3, 1.15);
-                addWheel(1.0, 0.4, -1.3, 1.15); addWheel(-1.0, 0.4, -1.3, 1.15);
+                addDetail(0.05, 0.05, 4.0, 0.98, 0.45, 0, accentMat); // Side accent L
+                addDetail(0.05, 0.05, 4.0, -0.98, 0.45, 0, accentMat); // Side accent R
+                addMirror(1.05, 0.6, 0.5); addMirror(-1.05, 0.6, 0.5);
+                addWheel(1.0, 0.4, 1.3, 1.2); addWheel(-1.0, 0.4, 1.3, 1.2);
+                addWheel(1.0, 0.4, -1.3, 1.2); addWheel(-1.0, 0.4, -1.3, 1.2);
             }
 
             return group;
         }
+
 
         // --- THE PLAYER CAR ---
         const player = new THREE.Group();
@@ -1202,7 +1329,7 @@
             const colors = [0x555555, 0xaa0000, 0x0000aa, 0x228822, 0xdddddd, 0xff8800, 0x8800ff, 0x111111];
             const color = colors[Math.floor(Math.random() * colors.length)];
 
-            const mesh = createCarMesh(type, color);
+            const mesh = createCarMesh(type, color, true); // Simplified for traffic
             car.add(mesh);
 
             if (isOncoming) {
@@ -1437,7 +1564,8 @@
                             car.remove(car.userData.meshGroup);
                             const newMesh = createCarMesh(
                                 models[Math.floor(Math.random() * models.length)],
-                                colors[Math.floor(Math.random() * colors.length)]
+                                colors[Math.floor(Math.random() * colors.length)],
+                                true // Simplified for traffic
                             );
                             car.userData.meshGroup = newMesh;
                             car.add(newMesh);
