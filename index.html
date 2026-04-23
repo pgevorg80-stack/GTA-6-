@@ -430,14 +430,24 @@
                 gap: 15px;
                 margin-top: 10px;
             }
+            
+            #garage-category-selection {
+                margin: 15px 0 !important;
+                gap: 15px !important;
+            }
+            #garage-category-selection .start-btn {
+                padding: 15px 30px !important;
+                font-size: 1.1rem !important;
+            }
 
             .options-container { 
                 padding: 10px; 
-                margin-bottom: 10px; 
+                margin-bottom: 0px; 
                 max-width: 95vw;
-                flex-direction: row;
-                gap: 20px;
-                align-items: flex-start;
+                flex-direction: column;
+                gap: 10px;
+                align-items: center;
+                overflow-y: auto;
             }
             .options-container h3 { font-size: 0.9rem; margin: 5px 0; }
             
@@ -448,10 +458,10 @@
                 justify-content: flex-start;
             }
             
-            .model-btn .price { font-size: 0.7rem; }
+            .model-btn .price { font-size: 0.6rem; }
             
-            .color-btn { width: 35px; height: 35px; border-width: 3px; }
-            .color-picker { gap: 10px; flex-wrap: wrap; justify-content: center; max-width: 150px; }
+            .color-btn { width: 30px; height: 30px; border-width: 2px; }
+            .color-picker { gap: 8px; flex-wrap: wrap; justify-content: center; max-width: 100%; }
             
             .start-btn { padding: 12px 40px; font-size: 1.2rem; }
             .garage-btn, .back-btn { padding: 12px 30px; font-size: 1.1rem; margin-top: 0; }
