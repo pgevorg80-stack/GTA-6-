@@ -635,9 +635,9 @@
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1500);
         const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: "high-performance" });
         renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.setPixelRatio(isMobile ? Math.min(window.devicePixelRatio, 1.5) : Math.min(window.devicePixelRatio, 2));
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         renderer.shadowMap.enabled = true;
-        renderer.shadowMap.type = isMobile ? THREE.BasicShadowMap : THREE.PCFSoftShadowMap;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         renderer.toneMapping = THREE.ReinhardToneMapping;
         document.body.appendChild(renderer.domElement);
 
@@ -647,9 +647,9 @@
         if (useBloom) {
             const renderScene = new RenderPass(scene, camera);
             const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.0, 0.4, 0.85);
-            bloomPass.threshold = isMobile ? 0.7 : 0.6;
-            bloomPass.strength = isMobile ? 0.6 : 1.0;
-            bloomPass.radius = isMobile ? 0.1 : 0.2;
+            bloomPass.threshold = 0.6;
+            bloomPass.strength = 1.0;
+            bloomPass.radius = 0.2;
             composer = new EffectComposer(renderer);
             composer.addPass(renderScene);
             composer.addPass(bloomPass);
@@ -805,7 +805,7 @@
             createStreetLight(i * 100 + 50, false);
         }
 
-        const buildingCount = isMobile ? 40 : 70;
+        const buildingCount = 70;
         for (let i = 0; i < buildingCount; i++) {
             createBuilding(100 + i * 35);
         }
